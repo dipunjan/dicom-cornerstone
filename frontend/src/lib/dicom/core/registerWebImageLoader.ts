@@ -3,17 +3,28 @@ import { imageLoader, metaData, Types, Enums } from "@cornerstonejs/core";
 export function registerWebImageLoader(): void {
   imageLoader.registerImageLoader("web", webImageLoader as Types.ImageLoaderFn);
 
-  metaData.addProvider((imageId: string) => {
+  metaData.addProvider((type: string, imageId: string) => {
     if (!imageId.startsWith("web:")) return;
-    return {
-      bitsAllocated: 8,
-      bitsStored: 8,
-      samplesPerPixel: 3,
-      highBit: 7,
-      photometricInterpretation: "RGB",
-      pixelRepresentation: 0,
-      planarConfiguration: 0,
-    };
+
+    if (type === "imagePixelModule") {
+      return {
+        bitsAllocated: 8,
+        bitsStored: 8,
+        samplesPerPixel: 3,
+        highBit: 7,
+        photometricInterpretation: "RGB",
+        pixelRepresentation: 0,
+        planarConfiguration: 0,
+      };
+    }
+
+    if (type === "generalSeriesModule") {
+      return {
+        modality: "SC",
+        seriesNumber: 1,
+        seriesDescription: "Web Image",
+      };
+    }
   });
 }
 
