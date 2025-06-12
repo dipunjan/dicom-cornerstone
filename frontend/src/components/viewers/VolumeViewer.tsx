@@ -10,7 +10,7 @@ import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupVolumeViewer3D } from "@/lib/dicom/utils/viewerUtils";
-import { adjustVolumeShift } from "@/lib/dicom/config/dicomImageControls";
+import { useViewportControls } from "@/hooks/useViewportControls";
 import {
   setup3dViewport,
   setup2dViewport,
@@ -49,6 +49,9 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     toolGroupId,
     dataId: data.id
   });
+
+  // Viewport controls hook for volume adjustment
+  const { adjustVolumeShift } = useViewportControls();
 
   const { canUndo, undo, updateSavedAnnotations } = useAnnotationUndo({
     viewportId,

@@ -8,15 +8,7 @@ import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupStackViewer } from "@/lib/dicom/utils/viewerUtils";
-import {
-  applyWindowLevel,
-  flipViewportVertical,
-  flipViewportHorizontal,
-  rotateViewportClockwise,
-  rotateViewportCounterClockwise,
-  applyContrastChange,
-  applyBrightnessChange
-} from "@/lib/dicom/config/dicomImageControls";
+import { useViewportControls } from "@/hooks/useViewportControls";
 import { handleToolSelection } from "@/lib/dicom/config/dicomAnnotationControl";
 import ViewerControls from "../toolbar/ViewerControls";
 
@@ -34,10 +26,21 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     needsWebImageLoader: false
   });
 
-  // Direct state management - no hook needed
+  // Direct state management
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+
+  // Viewport controls hook
+  const {
+    applyWindowLevel,
+    applyContrastChange,
+    applyBrightnessChange,
+    flipViewportVertical,
+    flipViewportHorizontal,
+    rotateViewportClockwise,
+    rotateViewportCounterClockwise,
+  } = useViewportControls();
 
   // Reset active tool when component mounts (switching between viewers)
   useEffect(() => {
