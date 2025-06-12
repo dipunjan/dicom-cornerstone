@@ -41,8 +41,6 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     shift,
     is3D,
     handleShiftChange,
-    switchTo3D,
-    switchTo2D,
     setIs3D,
     adjustVolumeShift
   } = useViewportControls({

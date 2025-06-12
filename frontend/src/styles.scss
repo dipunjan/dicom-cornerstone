@@ -141,8 +141,13 @@ body {
     border: 1px solid $border-light;
     max-height: calc(100vh - 40px);
     overflow-y: auto;
-    width: 250px;
+    width: auto;
+    min-width: 200px;
+    max-width: 300px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 }
 
@@ -296,7 +301,7 @@ body {
 // Shared Controls Styles
 .controls {
   .control-group {
-    margin-bottom: 15px;
+    margin-bottom: 8px;
 
     label {
       display: block;
@@ -327,20 +332,47 @@ body {
     }
   }
 
+  // Compact toolbar separator
+  .toolbar-separator {
+    height: 1px;
+    background: $border-light;
+    margin: 8px 0;
+    opacity: 0.5;
+  }
+
+  // Compact tools grid - more columns for smaller buttons
   .tools-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    margin-bottom: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 0;
+  }
+
+  // Compact slider controls
+  .slider-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+
+    .slider-icon {
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+      width: 16px;
+    }
+
+    .compact-slider {
+      flex: 1;
+      accent-color: $primary-color;
+    }
   }
 
   .tool-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 8px 6px;
-    font-size: 10px;
+    padding: 8px;
     border: 1px solid $border-medium;
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
@@ -348,14 +380,15 @@ body {
     border-radius: 4px;
     transition: all 0.2s ease;
     text-align: center;
-    min-height: 36px;
+    min-height: 32px;
+    min-width: 32px;
 
     svg {
-      font-size: 12px;
+      font-size: 14px;
       flex-shrink: 0;
     }
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: rgba(255, 255, 255, 0.2);
       border-color: $border-strong;
       transform: translateY(-1px);
@@ -364,6 +397,12 @@ body {
     &:active {
       transform: translateY(0);
       background: rgba(0, 122, 204, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.05);
     }
 
     &-active {
@@ -378,22 +417,20 @@ body {
         transform: translateY(-1px);
       }
     }
+
+    &-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.05);
+    }
   }
 
+  // Legacy button styles - now using tool-button class for consistency
   .undo-button {
-    @extend %button-secondary;
-    padding: 10px 16px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    width: 100%;
-    border-radius: 4px;
+    @extend .tool-button;
   }
 
   .save-button {
-    @extend %button-primary;
-    padding: 12px 20px;
-    margin-top: 10px;
-    font-size: 13px;
-    width: 100%;
+    @extend .tool-button;
   }
 }

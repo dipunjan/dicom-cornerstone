@@ -1,5 +1,14 @@
 import { toolConfig } from "@/lib/dicom/config/dicomAnnotationControl";
-import { FaArrowsAltH, FaArrowsAltV, FaRedoAlt, FaUndoAlt } from "react-icons/fa";
+import {
+  FaArrowsAltH,
+  FaArrowsAltV,
+  FaRedoAlt,
+  FaUndoAlt,
+  FaSave,
+  FaUndo,
+  FaAdjust,
+  FaSun
+} from "react-icons/fa";
 
 interface ViewerControlsProps {
   contrast?: number;
@@ -34,8 +43,8 @@ export default function ViewerControls({
 }: ViewerControlsProps) {
   return (
     <div className="controls">
+      {/* Tools Section */}
       <div className="control-group">
-        <label>Tools:</label>
         <div className="tools-grid">
           {toolConfig.map((tool) => {
             const IconComponent = tool.icon;
@@ -48,15 +57,17 @@ export default function ViewerControls({
                 title={tool.displayName}
               >
                 <IconComponent />
-                {tool.displayName}
               </button>
             );
           })}
         </div>
       </div>
 
+      {/* Separator */}
+      <div className="toolbar-separator"></div>
+
+      {/* Transform Tools */}
       <div className="control-group">
-        <label>Flip:</label>
         <div className="tools-grid">
           <button
             onClick={handleFlipHorizontal}
@@ -64,7 +75,6 @@ export default function ViewerControls({
             title="Flip Horizontal"
           >
             <FaArrowsAltH />
-            Flip H
           </button>
           <button
             onClick={handleFlipVertical}
@@ -72,21 +82,13 @@ export default function ViewerControls({
             title="Flip Vertical"
           >
             <FaArrowsAltV />
-            Flip V
           </button>
-        </div>
-      </div>
-
-      <div className="control-group">
-        <label>Rotate:</label>
-        <div className="tools-grid">
           <button
             onClick={handleRotateCounterClockwise}
             className="tool-button"
             title="Rotate Counter-Clockwise"
           >
             <FaUndoAlt />
-            Rotate CCW
           </button>
           <button
             onClick={handleRotateClockwise}
@@ -94,49 +96,65 @@ export default function ViewerControls({
             title="Rotate Clockwise"
           >
             <FaRedoAlt />
-            Rotate CW
           </button>
         </div>
       </div>
 
+      {/* Separator */}
+      <div className="toolbar-separator"></div>
+
+      {/* Image Controls */}
       <div className="control-group">
-        <label>Contrast:</label>
-        <input
-          type="range"
-          min={-127}
-          max={127}
-          step={1}
-          value={contrast}
-          onChange={(e) => handleContrastChange(parseFloat(e.target.value))}
-        />
-        <span>{contrast.toFixed(1)}</span>
+        <div className="slider-control">
+          <FaAdjust className="slider-icon" title="Contrast" />
+          <input
+            type="range"
+            min={-127}
+            max={127}
+            step={1}
+            value={contrast}
+            onChange={(e) => handleContrastChange(parseFloat(e.target.value))}
+            className="compact-slider"
+            title={`Contrast: ${contrast.toFixed(1)}`}
+          />
+        </div>
+        <div className="slider-control">
+          <FaSun className="slider-icon" title="Brightness" />
+          <input
+            type="range"
+            min={-127}
+            max={127}
+            step={1}
+            value={brightness}
+            onChange={(e) => handleBrightnessChange(parseFloat(e.target.value))}
+            className="compact-slider"
+            title={`Brightness: ${brightness.toFixed(1)}`}
+          />
+        </div>
       </div>
 
-      <div className="control-group">
-        <label>Brightness:</label>
-        <input
-          type="range"
-          min={-127}
-          max={127}
-          step={1}
-          value={brightness}
-          onChange={(e) => handleBrightnessChange(parseFloat(e.target.value))}
-        />
-        <span>{brightness.toFixed(1)}</span>
-      </div>
+      {/* Separator */}
+      <div className="toolbar-separator"></div>
 
+      {/* Action Buttons */}
       <div className="control-group">
-        <button
-          className="undo-button"
-          onClick={handleUndo}
-          disabled={!canUndo}
-          title="Undo last annotation"
-        >
-          Undo
-        </button>
-        <button className="save-button" onClick={handleSave}>
-          Save Settings
-        </button>
+        <div className="tools-grid">
+          <button
+            className={`tool-button ${!canUndo ? 'tool-button-disabled' : ''}`}
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title="Undo last annotation"
+          >
+            <FaUndo />
+          </button>
+          <button
+            className="tool-button"
+            onClick={handleSave}
+            title="Save Settings"
+          >
+            <FaSave />
+          </button>
+        </div>
       </div>
     </div>
   );
