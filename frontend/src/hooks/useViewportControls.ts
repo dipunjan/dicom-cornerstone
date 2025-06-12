@@ -1,13 +1,27 @@
+import { useState, useCallback } from "react";
 import { Types } from "@cornerstonejs/core";
+import { ToolGroupManager } from "@cornerstonejs/tools";
 import { vec3, mat4 } from "gl-matrix";
+import { setupVolumeViewer3D, setupVolumeViewer2D, ViewerSetupResult } from "@/lib/dicom/utils/viewerUtils";
 
 export const stackOriginalPoints = new Map<string, { center: number; width: number }>();
 const volumeOriginalPoints = new Map<string, number[][]>();
 
+interface UseViewportControlsProps {
+  initialShift?: number;
+  renderingEngineId?: string;
+  viewportId?: string;
+  toolGroupId?: string;
+  dataId?: string;
+}
+
 /**
- * Custom hook for viewport manipulation functions
+ * Custom hook for all viewport manipulation functions including volume controls
  */
-export function useViewportControls() {
+export function useViewportControls(props?: UseViewportControlsProps) {
+  // Volume-specific state (only used when props are provided)
+  const [shift, setShift] = useState(props?.initialShift || 0);
+  const [is3D, setIs3D] = useState(true);
   
   /**
    * Apply window level adjustments to viewport
@@ -214,7 +228,66 @@ export function useViewportControls() {
     viewport.render();
   };
 
+  /**
+   * Handle shift change for volume viewport
+   */
+  const handleShiftChange = (value: number, viewport: Types.IVolumeViewport | null) => {
+    if (!viewport || !is3D) return;
+    setShift(value);
+    adjustVolumeShift(viewport, value);
+  };
+
+  /**
+   * Switch to 3D volume rendering
+   */
+  const switchTo3D = useCallback(async (
+    element: HTMLDivElement | null,
+    renderingEngine: Types.IRenderingEngine | null,
+    imageUrls: string[],
+  ): Promise<ViewerSetupResult | null> => {
+    if (!element || !renderingEngine || !props) return null;
+
+    ToolGroupManager.destroyToolGroup(props.toolGroupId!);
+
+    const result = await setupVolumeViewer3D(
+      element,
+      props.renderingEngineId!,
+      props.viewportId!,
+      props.toolGroupId!,
+      imageUrls,
+      `dicomVolume_${props.dataId}`
+    );
+
+    setIs3D(true);
+    return result;
+  }, [props]);
+
+  /**
+   * Switch to 2D stack rendering
+   */
+  const switchTo2D = useCallback(async (
+    element: HTMLDivElement | null,
+    renderingEngine: Types.IRenderingEngine | null,
+    imageUrls: string[],
+  ): Promise<ViewerSetupResult | null> => {
+    if (!element || !renderingEngine || !props) return null;
+
+    ToolGroupManager.destroyToolGroup(props.toolGroupId!);
+
+    const result = await setupVolumeViewer2D(
+      element,
+      props.renderingEngineId!,
+      props.viewportId!,
+      props.toolGroupId!,
+      imageUrls
+    );
+
+    setIs3D(false);
+    return result;
+  }, [props]);
+
   return {
+    // Basic viewport functions
     applyWindowLevel,
     applyContrastChange,
     applyBrightnessChange,
@@ -223,5 +296,15 @@ export function useViewportControls() {
     rotateViewportClockwise,
     rotateViewportCounterClockwise,
     adjustVolumeShift,
+
+    // Volume-specific functions (only available when props are provided)
+    ...(props && {
+      shift,
+      is3D,
+      handleShiftChange,
+      switchTo3D,
+      switchTo2D,
+      setIs3D
+    })
   };
 }

@@ -5,7 +5,6 @@ import { DicomVolumeViewerProps } from "@/shared/types";
 import { saveVolumeConfig } from "@/shared/api";
 import { useViewportResize } from "@/hooks/useViewportResize";
 import { useViewerInitialization } from "@/hooks/useViewerInitialization";
-import { useVolumeControls } from "@/hooks/useVolumeControls";
 import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
@@ -37,21 +36,22 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     needsWebImageLoader: false
   });
 
+  // Consolidated viewport controls hook with volume functionality
   const {
     shift,
     is3D,
     handleShiftChange,
-    setIs3D
-  } = useVolumeControls({
+    switchTo3D,
+    switchTo2D,
+    setIs3D,
+    adjustVolumeShift
+  } = useViewportControls({
     initialShift: data.viewer.configs.shift,
     renderingEngineId,
     viewportId,
     toolGroupId,
     dataId: data.id
   });
-
-  // Viewport controls hook for volume adjustment
-  const { adjustVolumeShift } = useViewportControls();
 
   const { canUndo, undo, updateSavedAnnotations } = useAnnotationUndo({
     viewportId,
@@ -65,13 +65,15 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
   });
 
   const handleShiftChangeWrapper = (value: number) => {
-    handleShiftChange(value, viewportRef.current as Types.IVolumeViewport);
+    if (handleShiftChange) {
+      handleShiftChange(value, viewportRef.current as Types.IVolumeViewport);
+    }
   };
 
   const handleSave = async () => {
     const annotations = getViewportAnnotations(viewportId);
     await saveVolumeConfig(data.id, {
-      shift,
+      shift: shift || 0,
       annotations
     });
     updateSavedAnnotations(annotations);
@@ -92,8 +94,12 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     setupViewer(toolGroupId, viewportId, renderingEngineId, volumeViewerConfig);
 
     await loadDicomVolume(viewport, dicomFilesRef.current, undefined, `dicomVolume_${data.id}`);
-    adjustVolumeShift(viewport, shift);
-    setIs3D(true);
+    if (adjustVolumeShift && shift !== undefined) {
+      adjustVolumeShift(viewport, shift);
+    }
+    if (setIs3D) {
+      setIs3D(true);
+    }
   };
 
   const handleSwitchTo2D = async () => {
@@ -107,7 +113,9 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     setupViewer(toolGroupId, viewportId, renderingEngineId, volume2dModeConfig);
 
     await loadDicomStack(viewport, dicomFilesRef.current);
-    setIs3D(false);
+    if (setIs3D) {
+      setIs3D(false);
+    }
   };
 
   useViewportResize(renderingEngineRef, viewportId, isInitialized);
