@@ -3,6 +3,7 @@ import { toolConfig } from "@/lib/dicom/config/dicomAnnotationControl";
 interface ViewerControlsProps {
   contrast?: number;
   brightness?: number;
+  activeTool?: string | null;
   handleToolSelect?: (toolName: string) => void;
   handleContrastChange?: (value: number) => void;
   handleBrightnessChange?: (value: number) => void;
@@ -14,6 +15,7 @@ interface ViewerControlsProps {
 export default function ViewerControls({
   contrast = 0,
   brightness = 0,
+  activeTool = null,
   handleToolSelect = () => {},
   handleContrastChange = () => {},
   handleBrightnessChange = () => {},
@@ -28,11 +30,12 @@ export default function ViewerControls({
         <div className="tools-grid">
           {toolConfig.map((tool) => {
             const IconComponent = tool.icon;
+            const isActive = activeTool === tool.name;
             return (
               <button
                 key={tool.name}
                 onClick={() => handleToolSelect(tool.name)}
-                className="tool-button"
+                className={`tool-button ${isActive ? 'tool-button-active' : ''}`}
                 title={tool.displayName}
               >
                 <IconComponent />

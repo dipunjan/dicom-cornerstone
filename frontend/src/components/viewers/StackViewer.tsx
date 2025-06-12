@@ -29,6 +29,7 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
   const {
     contrast,
     brightness,
+    activeTool,
     handleContrastChange,
     handleBrightnessChange,
     handleToolSelect
@@ -114,6 +115,7 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
       <ViewerControls
         contrast={contrast}
         brightness={brightness}
+        activeTool={activeTool}
         handleToolSelect={handleToolSelect}
         handleContrastChange={handleContrastChangeWrapper}
         handleBrightnessChange={handleBrightnessChangeWrapper}

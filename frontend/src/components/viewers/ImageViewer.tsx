@@ -29,6 +29,7 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   const {
     contrast,
     brightness,
+    activeTool,
     handleContrastChange,
     handleBrightnessChange,
     handleToolSelect
@@ -115,6 +116,7 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
       <ViewerControls
         contrast={contrast}
         brightness={brightness}
+        activeTool={activeTool}
         handleToolSelect={handleToolSelect}
         handleContrastChange={handleContrastChangeWrapper}
         handleBrightnessChange={handleBrightnessChangeWrapper}

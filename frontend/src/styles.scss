@@ -365,6 +365,19 @@ body {
       transform: translateY(0);
       background: rgba(0, 122, 204, 0.3);
     }
+
+    &-active {
+      background: $primary-color;
+      border-color: $primary-hover;
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 122, 204, 0.4);
+
+      &:hover {
+        background: $primary-hover;
+        border-color: $primary-hover;
+        transform: translateY(-1px);
+      }
+    }
   }
 
   .undo-button {

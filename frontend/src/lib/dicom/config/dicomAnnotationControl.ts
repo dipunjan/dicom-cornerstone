@@ -294,3 +294,20 @@ export function setPrimaryTool(toolName: string, viewportId: string) {
     bindings: [{ mouseButton: mouseBindings.Primary }],
   });
 }
+
+export function resetToolsToDefault(viewportId: string) {
+  const toolGroup = ToolGroupManager.getToolGroupForViewport(viewportId);
+  if (!toolGroup) return;
+
+  // Set all tools to passive (deactivate all)
+  toolConfig.forEach((config) => {
+    if (toolGroup.hasTool(config.name)) {
+      toolGroup.setToolPassive(config.name);
+    }
+  });
+
+  // Clear any primary tool bindings
+  stackViewerConfig.bindings = stackViewerConfig.bindings.filter(
+    (b) => b.bindings[0].mouseButton !== mouseBindings.Primary
+  );
+}
