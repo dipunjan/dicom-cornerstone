@@ -43,13 +43,12 @@ export function useVolumeControls({
       viewportId,
       toolGroupId,
       imageUrls,
-      shift,
       `dicomVolume_${dataId}`
     );
 
     setIs3D(true);
     return result;
-  }, [renderingEngineId, toolGroupId, viewportId, dataId, shift]);
+  }, [renderingEngineId, toolGroupId, viewportId, dataId]);
 
   const switchTo2D = useCallback(async (
     element: HTMLDivElement | null,

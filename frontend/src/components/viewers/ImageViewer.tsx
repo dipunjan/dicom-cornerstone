@@ -10,6 +10,7 @@ import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupImageViewer } from "@/lib/dicom/utils/viewerUtils";
+import { applyWindowLevel } from "@/lib/dicom/config/dicomImageControls";
 
 export default function ImageViewer({ data }: MedicalImageViewerProps) {
   // Generate unique IDs for this viewer instance
@@ -22,7 +23,6 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   const renderingEngineRef = useRef<Types.IRenderingEngine | null>(null);
 
   const { isInitialized } = useViewerInitialization({
-    toolGroupId,
     needsWebImageLoader: true
   });
 
@@ -63,17 +63,18 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
         viewportId,
         toolGroupId,
         data.viewer.imageUrl,
-        contrast,
-        brightness,
         data.viewer.configs.annotations
       );
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;
+
+      // Apply initial contrast and brightness
+      applyWindowLevel(viewport as Types.IStackViewport, data.viewer.configs.contrast, data.viewer.configs.brightness);
     };
 
     initializeViewer();
-  }, [isInitialized, data, contrast, brightness, renderingEngineId, viewportId, toolGroupId]);
+  }, [isInitialized, data, renderingEngineId, viewportId, toolGroupId]);
 
 
 

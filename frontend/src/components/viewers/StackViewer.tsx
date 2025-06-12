@@ -9,6 +9,7 @@ import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupStackViewer } from "@/lib/dicom/utils/viewerUtils";
+import { applyWindowLevel } from "@/lib/dicom/config/dicomImageControls";
 import ViewerControls from "../toolbar/ViewerControls";
 
 export default function StackViewer({ data }: DicomStackViewerProps) {
@@ -22,7 +23,6 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
   const dicomFileRef = useRef<string>("");
 
   const { isInitialized } = useViewerInitialization({
-    toolGroupId,
     needsWebImageLoader: false
   });
 
@@ -63,19 +63,19 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
         viewportId,
         toolGroupId,
         data.viewer.imageUrl,
-        contrast,
-        brightness,
         data.viewer.configs.annotations
       );
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;
       dicomFileRef.current = data.viewer.imageUrl;
-      
+
+      // Apply initial contrast and brightness
+      applyWindowLevel(viewport as Types.IStackViewport, data.viewer.configs.contrast, data.viewer.configs.brightness);
     };
 
     initializeViewer();
-  }, [isInitialized, data, contrast, brightness, renderingEngineId, viewportId, toolGroupId]);
+  }, [isInitialized, data, renderingEngineId, viewportId, toolGroupId]);
 
   const handleUndoClick = () => {
     undo(viewportRef.current);

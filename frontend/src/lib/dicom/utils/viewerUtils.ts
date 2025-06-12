@@ -12,7 +12,7 @@ import {
   volumeViewerConfig,
   volume2dModeConfig
 } from "@/lib/dicom/config/dicomAnnotationControl";
-import { applyWindowLevel, adjustVolumeShift } from "@/lib/dicom/config/dicomImageControls";
+
 import { restoreViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 
 export interface ViewerSetupResult {
@@ -26,12 +26,9 @@ export async function setupImageViewer(
   viewportId: string,
   toolGroupId: string,
   imageUrl: string,
-  contrast: number,
-  brightness: number,
   annotations?: any[]
 ): Promise<ViewerSetupResult> {
   cache.purgeCache();
-
 
   const renderingEngine = createRenderingEngine(renderingEngineId);
   const viewport = setup2dViewport(renderingEngine, element, viewportId);
@@ -40,7 +37,6 @@ export async function setupImageViewer(
 
   const webImageId = `web:${imageUrl}`;
   await viewport.setStack([webImageId]);
-  applyWindowLevel(viewport, contrast, brightness);
 
   if (annotations) {
     restoreViewportAnnotations(annotations, viewportId, viewport);
@@ -55,8 +51,6 @@ export async function setupStackViewer(
   viewportId: string,
   toolGroupId: string,
   imageUrl: string | string[],
-  contrast: number,
-  brightness: number,
   annotations?: any[]
 ): Promise<ViewerSetupResult> {
   cache.purgeCache();
@@ -67,7 +61,6 @@ export async function setupStackViewer(
   setupViewer(toolGroupId, viewportId, renderingEngineId, stackViewerConfig);
 
   await loadDicomStack(viewport, imageUrl);
-  applyWindowLevel(viewport, contrast, brightness);
 
   if (annotations) {
     restoreViewportAnnotations(annotations, viewportId, viewport);
@@ -77,7 +70,13 @@ export async function setupStackViewer(
 }
 
 export async function setupVolumeViewer3D(
-element: HTMLDivElement, renderingEngineId: string, viewportId: string, toolGroupId: string, imageUrls: string[], shift: number, volumeId: string): Promise<ViewerSetupResult> {
+  element: HTMLDivElement,
+  renderingEngineId: string,
+  viewportId: string,
+  toolGroupId: string,
+  imageUrls: string[],
+  volumeId: string
+): Promise<ViewerSetupResult> {
   cache.purgeCache();
 
   const renderingEngine = createRenderingEngine(renderingEngineId);
@@ -86,7 +85,6 @@ element: HTMLDivElement, renderingEngineId: string, viewportId: string, toolGrou
   setupViewer(toolGroupId, viewportId, renderingEngineId, volumeViewerConfig);
 
   await loadDicomVolume(viewport, imageUrls, "CT-Bone", volumeId);
-  adjustVolumeShift(viewport, shift);
   return { renderingEngine, viewport };
 }
 

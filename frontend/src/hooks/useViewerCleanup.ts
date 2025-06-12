@@ -5,13 +5,11 @@ import { annotation, ToolGroupManager } from "@cornerstonejs/tools";
 interface UseViewerCleanupProps {
   renderingEngineRef: React.RefObject<Types.IRenderingEngine | null>;
   toolGroupId: string;
-  volumeId?: string;
 }
 
 export function useViewerCleanup({
   renderingEngineRef,
-  toolGroupId,
-  volumeId
+  toolGroupId
 }: UseViewerCleanupProps) {
   useEffect(() => {
     return () => {
@@ -21,5 +19,5 @@ export function useViewerCleanup({
       annotation.state.removeAllAnnotations();
       ToolGroupManager.destroyToolGroup(toolGroupId);
     };
-  }, [renderingEngineRef, toolGroupId, volumeId]);
+  }, [toolGroupId]);
 }

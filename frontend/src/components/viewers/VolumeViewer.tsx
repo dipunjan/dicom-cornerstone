@@ -10,13 +10,13 @@ import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupVolumeViewer3D } from "@/lib/dicom/utils/viewerUtils";
+import { adjustVolumeShift } from "@/lib/dicom/config/dicomImageControls";
 import {
   setup3dViewport,
   setup2dViewport,
   loadDicomVolume,
   loadDicomStack,
 } from "@/lib/dicom/core/dicomRenderingEngine";
-import { adjustVolumeShift } from "@/lib/dicom/config/dicomImageControls";
 import {
   setupViewer,
   volumeViewerConfig,
@@ -34,7 +34,6 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
   const dicomFilesRef = useRef<string[]>([]);
 
   const { isInitialized } = useViewerInitialization({
-    toolGroupId,
     needsWebImageLoader: false
   });
 
@@ -59,8 +58,7 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
 
   useViewerCleanup({
     renderingEngineRef,
-    toolGroupId,
-    volumeId: `dicomVolume_${data.id}`
+    toolGroupId
   });
 
   const handleShiftChangeWrapper = (value: number) => {
@@ -124,14 +122,15 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
         viewportId,
         toolGroupId,
         data.viewer.imageUrl,
-        data.viewer.configs.shift,
-        `dicomVolume_${data.id}`,
+        `dicomVolume_${data.id}`
       );
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;
       dicomFilesRef.current = data.viewer.imageUrl;
-      
+
+      // Apply initial shift
+      adjustVolumeShift(viewport as Types.IVolumeViewport, data.viewer.configs.shift);
     };
 
     initializeViewer();
