@@ -1,9 +1,6 @@
 import {
   ZoomTool,
-  PanTool,
   StackScrollTool,
-  TrackballRotateTool,
-  WindowLevelTool,
   LengthTool,
   AngleTool,
   RectangleROITool,
@@ -22,8 +19,6 @@ import vtkOrientationMarkerWidget from "@kitware/vtk.js/Interaction/Widgets/Orie
 import {
   FaSearchPlus,
   FaArrowsAlt,
-  FaVectorSquare,
-  FaAdjust,
   FaRuler,
   FaDrawPolygon,
   FaSquareFull,
@@ -47,24 +42,6 @@ export const toolConfig = [
     icon: FaSearchPlus,
   },
   {
-    tool: PanTool,
-    name: PanTool.toolName,
-    displayName: "Pan",
-    icon: FaArrowsAlt,
-  },
-  {
-    tool: TrackballRotateTool,
-    name: TrackballRotateTool.toolName,
-    displayName: "Rotate",
-    icon: FaVectorSquare,
-  },
-  {
-    tool: WindowLevelTool,
-    name: WindowLevelTool.toolName,
-    displayName: "Window Level",
-    icon: FaAdjust,
-  },
-  {
     tool: LengthTool,
     name: LengthTool.toolName,
     displayName: "Length",
@@ -82,7 +59,6 @@ export const toolConfig = [
     displayName: "Rectangle",
     icon: FaSquareFull,
   },
-
   {
     tool: EllipticalROITool,
     name: EllipticalROITool.toolName,
@@ -105,10 +81,7 @@ export const toolConfig = [
 
 type ToolClass =
   | typeof ZoomTool
-  | typeof PanTool
   | typeof StackScrollTool
-  | typeof TrackballRotateTool
-  | typeof WindowLevelTool
   | typeof LengthTool
   | typeof AngleTool
   | typeof RectangleROITool
@@ -235,25 +208,17 @@ export const stackViewerConfig: ViewerConfig = {
 };
 
 export const volumeViewerConfig: VolumeViewerConfig = {
-  tools: [ZoomTool, PanTool, TrackballRotateTool, OrientationMarkerTool],
+  tools: [ZoomTool, OrientationMarkerTool],
   bindings: [
-    {
-      tool: TrackballRotateTool,
-      bindings: [{ mouseButton: mouseBindings.Primary }],
-    },
     {
       tool: ZoomTool,
       bindings: [{ mouseButton: mouseBindings.Wheel }],
-    },
-    {
-      tool: PanTool,
-      bindings: [{ mouseButton: mouseBindings.Auxiliary }],
     },
   ],
 };
 
 export const volume2dModeConfig: ViewerConfig = {
-  tools: [ZoomTool, PanTool, StackScrollTool, WindowLevelTool],
+  tools: [ZoomTool, StackScrollTool],
   bindings: [
     {
       tool: StackScrollTool,
@@ -295,19 +260,14 @@ export function setPrimaryTool(toolName: string, viewportId: string) {
   });
 }
 
-export function resetToolsToDefault(viewportId: string) {
-  const toolGroup = ToolGroupManager.getToolGroupForViewport(viewportId);
-  if (!toolGroup) return;
-
-  // Set all tools to passive (deactivate all)
-  toolConfig.forEach((config) => {
-    if (toolGroup.hasTool(config.name)) {
-      toolGroup.setToolPassive(config.name);
-    }
-  });
-
-  // Clear any primary tool bindings
-  stackViewerConfig.bindings = stackViewerConfig.bindings.filter(
-    (b) => b.bindings[0].mouseButton !== mouseBindings.Primary
-  );
+/**
+ * Handle tool selection with state management
+ */
+export function handleToolSelection(
+  toolName: string,
+  viewportId: string,
+  setActiveTool: (tool: string | null) => void
+): void {
+  setPrimaryTool(toolName, viewportId);
+  setActiveTool(toolName);
 }

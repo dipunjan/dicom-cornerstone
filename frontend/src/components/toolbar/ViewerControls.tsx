@@ -1,4 +1,5 @@
 import { toolConfig } from "@/lib/dicom/config/dicomAnnotationControl";
+import { FaArrowsAltH, FaArrowsAltV, FaRedoAlt, FaUndoAlt } from "react-icons/fa";
 
 interface ViewerControlsProps {
   contrast?: number;
@@ -10,6 +11,10 @@ interface ViewerControlsProps {
   handleSave?: () => void;
   handleUndo?: () => void;
   canUndo?: boolean;
+  handleFlipHorizontal?: () => void;
+  handleFlipVertical?: () => void;
+  handleRotateClockwise?: () => void;
+  handleRotateCounterClockwise?: () => void;
 }
 
 export default function ViewerControls({
@@ -22,6 +27,10 @@ export default function ViewerControls({
   handleSave = () => {},
   handleUndo = () => {},
   canUndo = false,
+  handleFlipHorizontal = () => {},
+  handleFlipVertical = () => {},
+  handleRotateClockwise = () => {},
+  handleRotateCounterClockwise = () => {},
 }: ViewerControlsProps) {
   return (
     <div className="controls">
@@ -43,6 +52,50 @@ export default function ViewerControls({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      <div className="control-group">
+        <label>Flip:</label>
+        <div className="tools-grid">
+          <button
+            onClick={handleFlipHorizontal}
+            className="tool-button"
+            title="Flip Horizontal"
+          >
+            <FaArrowsAltH />
+            Flip H
+          </button>
+          <button
+            onClick={handleFlipVertical}
+            className="tool-button"
+            title="Flip Vertical"
+          >
+            <FaArrowsAltV />
+            Flip V
+          </button>
+        </div>
+      </div>
+
+      <div className="control-group">
+        <label>Rotate:</label>
+        <div className="tools-grid">
+          <button
+            onClick={handleRotateCounterClockwise}
+            className="tool-button"
+            title="Rotate Counter-Clockwise"
+          >
+            <FaUndoAlt />
+            Rotate CCW
+          </button>
+          <button
+            onClick={handleRotateClockwise}
+            className="tool-button"
+            title="Rotate Clockwise"
+          >
+            <FaRedoAlt />
+            Rotate CW
+          </button>
         </div>
       </div>
 

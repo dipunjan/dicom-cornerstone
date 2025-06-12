@@ -1,15 +1,23 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Types } from "@cornerstonejs/core";
 import { DicomStackViewerProps } from "@/shared/types";
 import { saveStackConfig } from "@/shared/api";
 import { useViewportResize } from "@/hooks/useViewportResize";
 import { useViewerInitialization } from "@/hooks/useViewerInitialization";
-import { useViewerControls } from "@/hooks/useViewerControls";
 import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 import { setupStackViewer } from "@/lib/dicom/utils/viewerUtils";
-import { applyWindowLevel } from "@/lib/dicom/config/dicomImageControls";
+import {
+  applyWindowLevel,
+  flipViewportVertical,
+  flipViewportHorizontal,
+  rotateViewportClockwise,
+  rotateViewportCounterClockwise,
+  applyContrastChange,
+  applyBrightnessChange
+} from "@/lib/dicom/config/dicomImageControls";
+import { handleToolSelection } from "@/lib/dicom/config/dicomAnnotationControl";
 import ViewerControls from "../toolbar/ViewerControls";
 
 export default function StackViewer({ data }: DicomStackViewerProps) {
@@ -26,18 +34,15 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     needsWebImageLoader: false
   });
 
-  const {
-    contrast,
-    brightness,
-    activeTool,
-    handleContrastChange,
-    handleBrightnessChange,
-    handleToolSelect
-  } = useViewerControls({
-    initialContrast: data.viewer.configs.contrast,
-    initialBrightness: data.viewer.configs.brightness,
-    viewportId
-  });
+  // Direct state management - no hook needed
+  const [contrast, setContrast] = useState(data.viewer.configs.contrast);
+  const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+
+  // Reset active tool when component mounts (switching between viewers)
+  useEffect(() => {
+    setActiveTool(null);
+  }, [viewportId]);
 
   const { canUndo, undo, updateSavedAnnotations } = useAnnotationUndo({
     viewportId,
@@ -84,13 +89,15 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
 
   const handleContrastChangeWrapper = (value: number) => {
     if (viewportRef.current) {
-      handleContrastChange(value, viewportRef.current);
+      setContrast(value);
+      applyContrastChange(viewportRef.current, value, brightness);
     }
   };
 
   const handleBrightnessChangeWrapper = (value: number) => {
     if (viewportRef.current) {
-      handleBrightnessChange(value, viewportRef.current);
+      setBrightness(value);
+      applyBrightnessChange(viewportRef.current, value, contrast);
     }
   };
 
@@ -104,6 +111,35 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
 
     updateSavedAnnotations(annotations);
   };
+
+  const flipVertical = () => {
+    if (viewportRef.current) {
+      flipViewportVertical(viewportRef.current);
+    }
+  };
+
+  const flipHorizontal = () => {
+    if (viewportRef.current) {
+      flipViewportHorizontal(viewportRef.current);
+    }
+  };
+
+  const rotateClockwise = () => {
+    if (viewportRef.current) {
+      rotateViewportClockwise(viewportRef.current);
+    }
+  };
+
+  const rotateCounterClockwise = () => {
+    if (viewportRef.current) {
+      rotateViewportCounterClockwise(viewportRef.current);
+    }
+  };
+
+  const handleToolSelect = (toolName: string) => {
+    handleToolSelection(toolName, viewportId, setActiveTool);
+  };
+
   return (
     <div className="stack-viewer">
       <div
@@ -122,6 +158,10 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
         handleSave={handleSave}
         handleUndo={handleUndoClick}
         canUndo={canUndo}
+        handleFlipHorizontal={flipHorizontal}
+        handleFlipVertical={flipVertical}
+        handleRotateClockwise={rotateClockwise}
+        handleRotateCounterClockwise={rotateCounterClockwise}
       />
     </div>
   );
