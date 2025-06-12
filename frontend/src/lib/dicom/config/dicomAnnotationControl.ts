@@ -8,7 +8,6 @@ import {
   AngleTool,
   RectangleROITool,
   EllipticalROITool,
-  CircleROITool,
   BidirectionalTool,
   ArrowAnnotateTool,
   PlanarFreehandROITool,
@@ -18,6 +17,7 @@ import {
   ToolGroupManager,
   Enums as csToolsEnums,
 } from "@cornerstonejs/tools";
+import { applyMeasurementConfig } from "./toolMeasurementConfig";
 import vtkOrientationMarkerWidget from "@kitware/vtk.js/Interaction/Widgets/OrientationMarkerWidget";
 import {
   FaSearchPlus,
@@ -27,7 +27,6 @@ import {
   FaRuler,
   FaDrawPolygon,
   FaSquareFull,
-  FaRegDotCircle,
   FaCircle,
   FaPencilAlt,
 } from "react-icons/fa";
@@ -83,12 +82,7 @@ export const toolConfig = [
     displayName: "Rectangle",
     icon: FaSquareFull,
   },
-  {
-    tool: CircleROITool,
-    name: CircleROITool.toolName,
-    displayName: "Circle",
-    icon: FaRegDotCircle,
-  },
+
   {
     tool: EllipticalROITool,
     name: EllipticalROITool.toolName,
@@ -119,7 +113,6 @@ type ToolClass =
   | typeof AngleTool
   | typeof RectangleROITool
   | typeof EllipticalROITool
-  | typeof CircleROITool
   | typeof BidirectionalTool
   | typeof ArrowAnnotateTool
   | typeof PlanarFreehandROITool
@@ -152,6 +145,9 @@ const magnifyConfig = {
   magnifySize: 40,
   magnificationLevel: 2,
 };
+
+// Tool measurement configuration is handled by toolMeasurementConfig.ts
+// Only Length tool shows measurements, all others have measurements disabled for performance
 
 const orientationMarkerConfig = {
   overlayMarkerType: OrientationMarkerTool.OVERLAY_MARKER_TYPES.ANNOTATED_CUBE,
@@ -227,7 +223,8 @@ export function setupViewer(
     } else if (tool === MagnifyTool) {
       toolGroup.addTool(tool.toolName, magnifyConfig);
     } else {
-      toolGroup.addTool(tool.toolName);
+      const measurementConfig = applyMeasurementConfig(tool.toolName);
+      toolGroup.addTool(tool.toolName, measurementConfig);
     }
   });
 

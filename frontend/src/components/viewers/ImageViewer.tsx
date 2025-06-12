@@ -34,14 +34,14 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   useEffect(() => {
     initializeCornerstone();
     registerWebImageLoader();
-    setUseCPURendering(true); // Enable CPU rendering for this viewer
+    // Try GPU rendering first - CPU rendering causes issues with MagnifyTool
+    setUseCPURendering(false);
     setIsInitialized(true);
     return () => {
       annotation.state.removeAllAnnotations();
       ToolGroupManager.destroyToolGroup(toolGroupId);
       renderingEngineRef.current?.destroy();
       cache.purgeCache();
-      setUseCPURendering(false);
     };
   }, [toolGroupId]);
 
@@ -66,8 +66,22 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
       const imageUrl = data.viewer.imageUrl;
       const webImageId = `web:${imageUrl}`;
 
-      await viewport.setStack([webImageId]);
-      applyWindowLevel(viewport, contrast, brightness);
+      try {
+        await viewport.setStack([webImageId]);
+        applyWindowLevel(viewport, contrast, brightness);
+      } catch (error) {
+        console.error("Failed to load image with GPU rendering:", error);
+        // Fallback to CPU rendering if GPU rendering fails
+        console.log("Falling back to CPU rendering...");
+        setUseCPURendering(true);
+        viewport.setUseCPURendering(true);
+        try {
+          await viewport.setStack([webImageId]);
+          applyWindowLevel(viewport, contrast, brightness);
+        } catch (cpuError) {
+          console.error("Failed to load image with CPU rendering:", cpuError);
+        }
+      }
 
       if (data.viewer.configs.annotations) {
         restoreViewportAnnotations(data.viewer.configs.annotations, viewportId, viewport);

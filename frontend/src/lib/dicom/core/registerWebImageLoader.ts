@@ -18,8 +18,8 @@ export function registerWebImageLoader(): void {
       return {
         bitsAllocated: 8,
         bitsStored: 8,
-        samplesPerPixel: 4, // RGBA
-        highBit: 8,
+        samplesPerPixel: 3, // RGB (changed from 4)
+        highBit: 7, // Changed from 8 to 7 for 8-bit data
         photometricInterpretation: "RGB",
         pixelRepresentation: 0,
         planarConfiguration: 0,
@@ -98,6 +98,15 @@ async function loadWebImage(imageId: string): Promise<Types.IImage> {
           return;
         }
 
+        // Convert RGBA to RGB for better GPU compatibility
+        const rgbPixelData = new Uint8Array((pixelData.length / 4) * 3);
+        for (let i = 0, j = 0; i < pixelData.length; i += 4, j += 3) {
+          rgbPixelData[j] = pixelData[i];     // R
+          rgbPixelData[j + 1] = pixelData[i + 1]; // G
+          rgbPixelData[j + 2] = pixelData[i + 2]; // B
+          // Skip alpha channel
+        }
+
         // Create the Cornerstone image object
         const cornerstoneImage: Types.IImage = {
           imageId,
@@ -107,19 +116,19 @@ async function loadWebImage(imageId: string): Promise<Types.IImage> {
           intercept: 0,
           windowCenter: 127,
           windowWidth: 255,
-          getPixelData: () => pixelData,
+          getPixelData: () => rgbPixelData,
           rows: image.height,
           columns: image.width,
           height: image.height,
           width: image.width,
           color: true,
-          rgba: true,
+          rgba: false, // Changed to false since we're using RGB
           columnPixelSpacing: 1.0,
           rowPixelSpacing: 1.0,
           invert: false,
-          sizeInBytes: pixelData.length,
+          sizeInBytes: rgbPixelData.length,
           preScale: {
-            enabled: true,
+            enabled: false, // Disable pre-scaling for web images
             scaled: false,
             scalingParameters: {
               modality: undefined,
@@ -133,7 +142,7 @@ async function loadWebImage(imageId: string): Promise<Types.IImage> {
           getCanvas: () => canvas,
           cachedLut: undefined,
           voiLUTFunction: Enums.VOILUTFunctionType.LINEAR,
-          numberOfComponents: 4,
+          numberOfComponents: 3, // Changed to 3 for RGB
           dataType: "Uint8Array",
         };
 
