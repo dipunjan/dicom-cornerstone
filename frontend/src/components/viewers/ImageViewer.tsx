@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Types, cache, setUseCPURendering } from "@cornerstonejs/core";
+import { Types, cache } from "@cornerstonejs/core";
 import { annotation, ToolGroupManager } from "@cornerstonejs/tools";
 import { initializeCornerstone } from "@/lib/dicom/core/dicomCornerstoneInit";
 import { registerWebImageLoader } from "@/lib/dicom/core/registerWebImageLoader";
@@ -34,9 +34,10 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   useEffect(() => {
     initializeCornerstone();
     registerWebImageLoader();
-    // Try GPU rendering first - CPU rendering causes issues with MagnifyTool
-    setUseCPURendering(false);
-    setIsInitialized(true);
+    setTimeout(() => {
+      setIsInitialized(true);
+    }, 100);
+
     return () => {
       annotation.state.removeAllAnnotations();
       ToolGroupManager.destroyToolGroup(toolGroupId);
@@ -52,36 +53,18 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     const initializeViewer = async () => {
       const element = elementRef.current;
       if (!element) return;
-      // while (element.firstChild) {
-      //   element.removeChild(element.firstChild);
-      // }
       cache.purgeCache();
       const renderingEngine = createRenderingEngine(renderingEngineId);
       renderingEngineRef.current = renderingEngine;
       const viewport = setup2dViewport(renderingEngine, element, viewportId);
       viewportRef.current = viewport;
-      console.log(viewport);
       setupViewer(toolGroupId, viewportId, renderingEngineId, stackViewerConfig);
 
       const imageUrl = data.viewer.imageUrl;
       const webImageId = `web:${imageUrl}`;
 
-      try {
-        await viewport.setStack([webImageId]);
-        applyWindowLevel(viewport, contrast, brightness);
-      } catch (error) {
-        console.error("Failed to load image with GPU rendering:", error);
-        // Fallback to CPU rendering if GPU rendering fails
-        console.log("Falling back to CPU rendering...");
-        setUseCPURendering(true);
-        viewport.setUseCPURendering(true);
-        try {
-          await viewport.setStack([webImageId]);
-          applyWindowLevel(viewport, contrast, brightness);
-        } catch (cpuError) {
-          console.error("Failed to load image with CPU rendering:", cpuError);
-        }
-      }
+      await viewport.setStack([webImageId]);
+      applyWindowLevel(viewport, contrast, brightness);
 
       if (data.viewer.configs.annotations) {
         restoreViewportAnnotations(data.viewer.configs.annotations, viewportId, viewport);
