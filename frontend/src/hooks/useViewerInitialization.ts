@@ -19,9 +19,7 @@ export function useViewerInitialization({
 
       if (needsWebImageLoader) {
         registerWebImageLoader();
-        setTimeout(() => {
-          setIsInitialized(true);
-        }, 10);
+        setIsInitialized(true);
       } else {
         setIsInitialized(true);
       }
