@@ -49,6 +49,7 @@ export interface DicomStackConfig {
 
 export interface DicomVolumeConfig {
   shift: number;
+  annotations?: AnnotationData[];
 }
 
 export interface MedicalImageConfig {

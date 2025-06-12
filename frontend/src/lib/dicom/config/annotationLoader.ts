@@ -36,7 +36,7 @@ export function getViewportAnnotations(viewportId: string): AnnotationData[] {
 export function restoreViewportAnnotations(
   annotations: AnnotationData[],
   viewportId: string,
-  viewport: Types.IStackViewport
+  viewport: Types.IStackViewport | Types.IVolumeViewport
 ): void {
   if (!Array.isArray(annotations) || annotations.length === 0) return;
 

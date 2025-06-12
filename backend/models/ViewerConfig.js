@@ -65,6 +65,21 @@ const volumeConfigSchema = new mongoose.Schema(
           type: Number,
           default: 400,
         },
+        annotations: {
+          type: [
+            {
+              annotationUID: String,
+              toolName: String,
+              data: mongoose.Schema.Types.Mixed,
+              metadata: {
+                viewportId: String,
+                frameOfReferenceUID: String,
+                referencedImageId: String,
+              },
+            },
+          ],
+          default: [],
+        },
       },
     },
   },

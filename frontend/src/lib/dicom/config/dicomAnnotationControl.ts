@@ -285,13 +285,9 @@ export function setPrimaryTool(toolName: string, viewportId: string) {
     toolGroup.setToolPassive(config.name);
   });
 
-  try {
-    toolGroup.setToolActive(toolName, {
-      bindings: [{ mouseButton: mouseBindings.Primary }],
-    });
-  } catch (error) {
-    console.warn(`Error activating tool ${toolName}:`, error);
-  }
+  toolGroup.setToolActive(toolName, {
+    bindings: [{ mouseButton: mouseBindings.Primary }],
+  });
 
   stackViewerConfig.bindings = stackViewerConfig.bindings.filter(
     (b) => b.bindings[0].mouseButton !== mouseBindings.Primary

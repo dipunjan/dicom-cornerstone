@@ -1,144 +1,96 @@
-import { useRef, useEffect, useState } from "react";
-import { Types, cache, setUseCPURendering, eventTarget } from "@cornerstonejs/core";
-import { annotation, ToolGroupManager, Enums } from "@cornerstonejs/tools";
-import { initializeCornerstone } from "@/lib/dicom/core/dicomCornerstoneInit";
-import { registerWebImageLoader } from "@/lib/dicom/core/registerWebImageLoader";
-import { createRenderingEngine, setup2dViewport } from "@/lib/dicom/core/dicomRenderingEngine";
+import { useRef, useEffect } from "react";
+import { Types } from "@cornerstonejs/core";
 import { MedicalImageViewerProps } from "@/shared/types";
 import ViewerControls from "../toolbar/ViewerControls";
-import { applyWindowLevel } from "@/lib/dicom/config/dicomImageControls";
 import { saveImageConfig } from "@/shared/api";
-import {
-  setupViewer,
-  stackViewerConfig,
-  setPrimaryTool,
-} from "@/lib/dicom/config/dicomAnnotationControl";
 import { useViewportResize } from "@/hooks/useViewportResize";
-import {
-  getViewportAnnotations,
-  restoreViewportAnnotations,
-} from "@/lib/dicom/config/annotationLoader";
+import { useViewerInitialization } from "@/hooks/useViewerInitialization";
+import { useViewerControls } from "@/hooks/useViewerControls";
+import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
+import { useViewerCleanup } from "@/hooks/useViewerCleanup";
+import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
+import { setupImageViewer } from "@/lib/dicom/utils/viewerUtils";
 
 export default function ImageViewer({ data }: MedicalImageViewerProps) {
   // Generate unique IDs for this viewer instance
   const renderingEngineId = `renderingEngine_${data.id}`;
   const viewportId = `viewport_${data.id}`;
   const toolGroupId = `toolGroup_${data.id}`;
+
   const elementRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<Types.IStackViewport | null>(null);
+  const viewportRef = useRef<Types.IStackViewport | Types.IVolumeViewport | null>(null);
   const renderingEngineRef = useRef<Types.IRenderingEngine | null>(null);
-  const annotationHistoryRef = useRef<any[]>([]);
-  const savedAnnotationsRef = useRef<any[]>([]);
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [contrast, setContrast] = useState(data.viewer.configs.contrast);
-  const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
-  const [canUndo, setCanUndo] = useState(false);
+  const { isInitialized } = useViewerInitialization({
+    toolGroupId,
+    needsWebImageLoader: true
+  });
+
+  const {
+    contrast,
+    brightness,
+    handleContrastChange,
+    handleBrightnessChange,
+    handleToolSelect
+  } = useViewerControls({
+    initialContrast: data.viewer.configs.contrast,
+    initialBrightness: data.viewer.configs.brightness,
+    viewportId
+  });
+
+  const { canUndo, undo, updateSavedAnnotations } = useAnnotationUndo({
+    viewportId,
+    isInitialized,
+    savedAnnotations: data.viewer.configs.annotations
+  });
+
+  useViewerCleanup({
+    renderingEngineRef,
+    toolGroupId
+  });
+
+  useViewportResize(renderingEngineRef, viewportId, isInitialized);
 
   useEffect(() => {
-    initializeCornerstone();
-    registerWebImageLoader();
-    setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
-
-    return () => {
-      annotation.state.removeAllAnnotations();
-      ToolGroupManager.destroyToolGroup(toolGroupId);
-      renderingEngineRef.current?.destroy();
-      cache.purgeCache();
-    };
-  }, [toolGroupId]);
-
-  useEffect(() => {
-    const element = elementRef.current;
-    if (!element) return;
+    if (!isInitialized || !elementRef.current) return;
 
     const initializeViewer = async () => {
       const element = elementRef.current;
       if (!element) return;
-      cache.purgeCache();
-      const renderingEngine = createRenderingEngine(renderingEngineId);
+      const { renderingEngine, viewport } = await setupImageViewer(
+        element,
+        renderingEngineId,
+        viewportId,
+        toolGroupId,
+        data.viewer.imageUrl,
+        contrast,
+        brightness,
+        data.viewer.configs.annotations
+      );
+
       renderingEngineRef.current = renderingEngine;
-      const viewport = setup2dViewport(renderingEngine, element, viewportId);
       viewportRef.current = viewport;
-      setupViewer(toolGroupId, viewportId, renderingEngineId, stackViewerConfig);
-
-      const imageUrl = data.viewer.imageUrl;
-      const webImageId = `web:${imageUrl}`;
-
-      await viewport.setStack([webImageId]);
-      applyWindowLevel(viewport, contrast, brightness);
-
-      if (data.viewer.configs.annotations) {
-        restoreViewportAnnotations(data.viewer.configs.annotations, viewportId, viewport);
-        // Store saved annotation UIDs to exclude them from undo history
-        savedAnnotationsRef.current = data.viewer.configs.annotations.map((ann: any) => ({
-          annotationUID: ann.annotationUID
-        }));
-      }
     };
 
     initializeViewer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, data]);
+  }, [isInitialized, data, contrast, brightness, renderingEngineId, viewportId, toolGroupId]);
 
-  useViewportResize(renderingEngineRef, viewportId, isInitialized);
 
-  // Set up annotation event listeners for undo functionality
-  useEffect(() => {
-    if (!isInitialized) return;
 
-    const handleAnnotationAdded = (event: any) => {
-      const annotationData = event.detail.annotation;
-      const eventViewportId = event.detail.viewportId;
-
-      if (annotationData && eventViewportId === viewportId) {
-        const isSavedAnnotation = savedAnnotationsRef.current.some(saved =>
-          saved.annotationUID === annotationData.annotationUID
-        );
-
-        if (!isSavedAnnotation) {
-          annotationHistoryRef.current.push(annotationData.annotationUID);
-          setCanUndo(true);
-        }
-      }
-    };
-
-    // Add event listener for annotation added events
-    eventTarget.addEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
-
-    return () => {
-      eventTarget.removeEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
-    };
-  }, [isInitialized, viewportId]);
-
-  const handleToolSelect = (toolName: string) => {
-    setPrimaryTool(toolName, viewportId);
+  const handleUndoClick = () => {
+    undo(viewportRef.current);
   };
 
-  const handleUndo = () => {
-    if (annotationHistoryRef.current.length === 0 || !viewportRef.current) return;
-
-    // Get the last annotation UID from history
-    const lastAnnotationUID = annotationHistoryRef.current.pop();
-
-    if (lastAnnotationUID) {
-      annotation.state.removeAnnotation(lastAnnotationUID);
-      viewportRef.current.render();
-      setCanUndo(annotationHistoryRef.current.length > 0);
+  const handleContrastChangeWrapper = (value: number) => {
+    if (viewportRef.current) {
+      handleContrastChange(value, viewportRef.current);
     }
   };
 
-  const handleContrastChange = (value: number) => {
-    if (!viewportRef.current) return;
-    setContrast(value);
-    applyWindowLevel(viewportRef.current, value, brightness);
-  };
-  const handleBrightnessChange = (value: number) => {
-    if (!viewportRef.current) return;
-    setBrightness(value);
-    applyWindowLevel(viewportRef.current, contrast, value);
+  const handleBrightnessChangeWrapper = (value: number) => {
+    if (viewportRef.current) {
+      handleBrightnessChange(value, viewportRef.current);
+    }
   };
 
   const handleSave = async () => {
@@ -149,14 +101,7 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
       annotations,
     });
 
-    // Update saved annotations to include newly saved ones
-    savedAnnotationsRef.current = annotations.map((ann: any) => ({
-      annotationUID: ann.annotationUID
-    }));
-
-    // Clear undo history since everything is now saved
-    annotationHistoryRef.current = [];
-    setCanUndo(false);
+    updateSavedAnnotations(annotations);
   };
 
   return (
@@ -170,10 +115,10 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
         contrast={contrast}
         brightness={brightness}
         handleToolSelect={handleToolSelect}
-        handleContrastChange={handleContrastChange}
-        handleBrightnessChange={handleBrightnessChange}
+        handleContrastChange={handleContrastChangeWrapper}
+        handleBrightnessChange={handleBrightnessChangeWrapper}
         handleSave={handleSave}
-        handleUndo={handleUndo}
+        handleUndo={handleUndoClick}
         canUndo={canUndo}
       />
     </div>

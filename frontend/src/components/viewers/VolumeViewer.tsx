@@ -1,9 +1,16 @@
-import { useRef, useEffect, useState, useCallback } from "react";
-import { Types, cache } from "@cornerstonejs/core";
+import { useRef, useEffect } from "react";
+import { Types } from "@cornerstonejs/core";
 import { ToolGroupManager } from "@cornerstonejs/tools";
-import { initializeCornerstone } from "@/lib/dicom/core/dicomCornerstoneInit";
+import { DicomVolumeViewerProps } from "@/shared/types";
+import { saveVolumeConfig } from "@/shared/api";
+import { useViewportResize } from "@/hooks/useViewportResize";
+import { useViewerInitialization } from "@/hooks/useViewerInitialization";
+import { useVolumeControls } from "@/hooks/useVolumeControls";
+import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
+import { useViewerCleanup } from "@/hooks/useViewerCleanup";
+import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
+import { setupVolumeViewer3D } from "@/lib/dicom/utils/viewerUtils";
 import {
-  createRenderingEngine,
   setup3dViewport,
   setup2dViewport,
   loadDicomVolume,
@@ -15,12 +22,8 @@ import {
   volumeViewerConfig,
   volume2dModeConfig,
 } from "@/lib/dicom/config/dicomAnnotationControl";
-import { saveVolumeConfig } from "@/shared/api";
-import { DicomVolumeViewerProps } from "@/shared/types";
-import { useViewportResize } from "@/hooks/useViewportResize";
 
 export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
-  // Generate unique IDs for this viewer instance
   const renderingEngineId = `renderingEngine_${data.id}`;
   const viewportId = `viewport_${data.id}`;
   const toolGroupId = `toolGroup_${data.id}`;
@@ -30,21 +33,54 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
   const viewportRef = useRef<Types.IStackViewport | Types.IVolumeViewport | null>(null);
   const dicomFilesRef = useRef<string[]>([]);
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [is3D, setIs3D] = useState(true);
-  const [shift, setShift] = useState(data.viewer.configs.shift);
+  const { isInitialized } = useViewerInitialization({
+    toolGroupId,
+    needsWebImageLoader: false
+  });
 
-  const handleShiftChange = (value: number) => {
-    if (!viewportRef.current || !is3D) return;
-    setShift(value);
-    adjustVolumeShift(viewportRef.current as Types.IVolumeViewport, value);
+  const {
+    shift,
+    is3D,
+    handleShiftChange,
+    setIs3D
+  } = useVolumeControls({
+    initialShift: data.viewer.configs.shift,
+    renderingEngineId,
+    viewportId,
+    toolGroupId,
+    dataId: data.id
+  });
+
+  const { canUndo, undo, updateSavedAnnotations } = useAnnotationUndo({
+    viewportId,
+    isInitialized,
+    savedAnnotations: data.viewer.configs.annotations
+  });
+
+  useViewerCleanup({
+    renderingEngineRef,
+    toolGroupId,
+    volumeId: `dicomVolume_${data.id}`
+  });
+
+  const handleShiftChangeWrapper = (value: number) => {
+    handleShiftChange(value, viewportRef.current as Types.IVolumeViewport);
   };
 
   const handleSave = async () => {
-    await saveVolumeConfig(data.id, { shift });
+    const annotations = getViewportAnnotations(viewportId);
+    await saveVolumeConfig(data.id, {
+      shift,
+      annotations
+    });
+    updateSavedAnnotations(annotations);
   };
 
-  const switchTo3D = useCallback(async () => {
+  const handleUndo = () => {
+    undo(viewportRef.current);
+  };
+
+  const handleSwitchTo3D = async () => {
     if (!elementRef.current || !renderingEngineRef.current) return;
 
     ToolGroupManager.destroyToolGroup(toolGroupId);
@@ -57,9 +93,9 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
     await loadDicomVolume(viewport, dicomFilesRef.current, undefined, `dicomVolume_${data.id}`);
     adjustVolumeShift(viewport, shift);
     setIs3D(true);
-  }, [shift, renderingEngineId, toolGroupId, viewportId, data.id]);
+  };
 
-  const switchTo2D = useCallback(async () => {
+  const handleSwitchTo2D = async () => {
     if (!elementRef.current || !renderingEngineRef.current) return;
 
     ToolGroupManager.destroyToolGroup(toolGroupId);
@@ -71,46 +107,35 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
 
     await loadDicomStack(viewport, dicomFilesRef.current);
     setIs3D(false);
-  }, [renderingEngineId, toolGroupId, viewportId]);
+  };
 
-  useEffect(() => {
-    initializeCornerstone();
-    setIsInitialized(true);
-
-    return () => {
-      ToolGroupManager.destroyToolGroup(toolGroupId);
-      renderingEngineRef.current?.destroy();
-      cache.purgeCache();
-    };
-  }, [toolGroupId]);
   useViewportResize(renderingEngineRef, viewportId, isInitialized);
 
   useEffect(() => {
     if (!isInitialized || !elementRef.current) return;
 
     const initializeViewer = async () => {
-      cache.purgeCache();
-
-      const renderingEngine = createRenderingEngine(renderingEngineId);
-      renderingEngineRef.current = renderingEngine;
-
       const element = elementRef.current;
       if (!element) return;
 
-      const viewport = setup3dViewport(renderingEngine, element, viewportId);
+      const { renderingEngine, viewport } = await setupVolumeViewer3D(
+        element,
+        renderingEngineId,
+        viewportId,
+        toolGroupId,
+        data.viewer.imageUrl,
+        data.viewer.configs.shift,
+        `dicomVolume_${data.id}`,
+      );
+
+      renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;
-
-      setupViewer(toolGroupId, viewportId, renderingEngineId, volumeViewerConfig);
-
       dicomFilesRef.current = data.viewer.imageUrl;
-      await loadDicomVolume(viewport, data.viewer.imageUrl, undefined, `dicomVolume_${data.id}`);
-      setIs3D(true);
-      adjustVolumeShift(viewport, shift);
+      
     };
 
     initializeViewer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, data]);
+  }, [isInitialized, data, renderingEngineId, viewportId, toolGroupId]);
 
   return (
     <div className="volume-viewer">
@@ -126,25 +151,35 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
               max="3000"
               step="100"
               value={shift}
-              onChange={(e) => handleShiftChange(parseInt(e.target.value))}
+              onChange={(e) => handleShiftChangeWrapper(parseInt(e.target.value))}
             />
             <span>{shift}</span>
           </div>
 
-          <button className="save-button" onClick={handleSave}>
-            Save Settings
-          </button>
+          <div className="control-group">
+            <button
+              className="undo-button"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo last annotation"
+            >
+              Undo
+            </button>
+            <button className="save-button" onClick={handleSave}>
+              Save Settings
+            </button>
+          </div>
         </div>
       )}
 
       <div className="mode-switcher">
-        <span className={`mode-switcher-item ${is3D ? "active" : "inactive"}`} onClick={switchTo3D}>
+        <span className={`mode-switcher-item ${is3D ? "active" : "inactive"}`} onClick={handleSwitchTo3D}>
           3D
         </span>
         <span className="mode-switcher-separator">|</span>
         <span
           className={`mode-switcher-item ${!is3D ? "active" : "inactive"}`}
-          onClick={switchTo2D}
+          onClick={handleSwitchTo2D}
         >
           2D
         </span>
