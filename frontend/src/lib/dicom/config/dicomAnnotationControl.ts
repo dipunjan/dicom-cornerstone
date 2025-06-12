@@ -140,14 +140,10 @@ export interface VolumeViewerConfig {
   bindings: VolumeToolBinding[];
 }
 
-// Configuration for the Magnify tool
 const magnifyConfig = {
-  magnifySize: 40,
+  magnifySize: 5,
   magnificationLevel: 2,
 };
-
-// Tool measurement configuration is handled by toolMeasurementConfig.ts
-// Only Length tool shows measurements, all others have measurements disabled for performance
 
 const orientationMarkerConfig = {
   overlayMarkerType: OrientationMarkerTool.OVERLAY_MARKER_TYPES.ANNOTATED_CUBE,
