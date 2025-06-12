@@ -7,6 +7,8 @@ interface ViewerControlsProps {
   handleContrastChange?: (value: number) => void;
   handleBrightnessChange?: (value: number) => void;
   handleSave?: () => void;
+  handleUndo?: () => void;
+  canUndo?: boolean;
 }
 
 export default function ViewerControls({
@@ -16,6 +18,8 @@ export default function ViewerControls({
   handleContrastChange = () => {},
   handleBrightnessChange = () => {},
   handleSave = () => {},
+  handleUndo = () => {},
+  canUndo = false,
 }: ViewerControlsProps) {
   return (
     <div className="controls">
@@ -65,9 +69,19 @@ export default function ViewerControls({
         <span>{brightness.toFixed(1)}</span>
       </div>
 
-      <button className="save-button" onClick={handleSave}>
-        Save Settings
-      </button>
+      <div className="control-group">
+        <button
+          className="undo-button"
+          onClick={handleUndo}
+          disabled={!canUndo}
+          title="Undo last annotation"
+        >
+          Undo
+        </button>
+        <button className="save-button" onClick={handleSave}>
+          Save Settings
+        </button>
+      </div>
     </div>
   );
 }

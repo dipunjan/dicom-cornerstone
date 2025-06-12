@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
-import { Types, cache } from "@cornerstonejs/core";
-import { ToolGroupManager, annotation } from "@cornerstonejs/tools";
+import { Types, cache, eventTarget } from "@cornerstonejs/core";
+import { ToolGroupManager, annotation, Enums } from "@cornerstonejs/tools";
 import { initializeCornerstone } from "@/lib/dicom/core/dicomCornerstoneInit";
 import {
   createRenderingEngine,
@@ -30,10 +30,13 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
   const viewportRef = useRef<Types.IStackViewport | null>(null);
   const renderingEngineRef = useRef<Types.IRenderingEngine | null>(null);
   const dicomFileRef = useRef<string>("");
+  const annotationHistoryRef = useRef<any[]>([]);
+  const savedAnnotationsRef = useRef<any[]>([]);
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
+  const [canUndo, setCanUndo] = useState(false);
 
   useEffect(() => {
     initializeCornerstone();
@@ -47,6 +50,33 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
   }, [toolGroupId]);
 
   useViewportResize(renderingEngineRef, viewportId, isInitialized);
+
+  // Set up annotation event listeners for undo functionality
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const handleAnnotationAdded = (event: any) => {
+      const annotationData = event.detail.annotation;
+      const eventViewportId = event.detail.viewportId;
+
+      if (annotationData && eventViewportId === viewportId) {
+        const isSavedAnnotation = savedAnnotationsRef.current.some(saved =>
+          saved.annotationUID === annotationData.annotationUID
+        );
+
+        if (!isSavedAnnotation) {
+          annotationHistoryRef.current.push(annotationData.annotationUID);
+          setCanUndo(true);
+        }
+      }
+    };
+
+    eventTarget.addEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
+
+    return () => {
+      eventTarget.removeEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
+    };
+  }, [isInitialized, viewportId]);
 
   useEffect(() => {
     if (!isInitialized || !elementRef.current) return;
@@ -70,12 +100,28 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
       applyWindowLevel(viewport, contrast, brightness);
       if (data.viewer.configs.annotations) {
         restoreViewportAnnotations(data.viewer.configs.annotations, viewportId, viewport);
+        // Store saved annotation UIDs to exclude them from undo history
+        savedAnnotationsRef.current = data.viewer.configs.annotations.map((ann: any) => ({
+          annotationUID: ann.annotationUID
+        }));
       }
     };
 
     initializeViewer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized, data]);
+
+  const handleUndo = () => {
+    if (annotationHistoryRef.current.length === 0 || !viewportRef.current) return;
+
+    const lastAnnotationUID = annotationHistoryRef.current.pop();
+
+    if (lastAnnotationUID) {
+      annotation.state.removeAnnotation(lastAnnotationUID);
+      viewportRef.current.render();
+      setCanUndo(annotationHistoryRef.current.length > 0);
+    }
+  };
 
   const handleContrastChange = (value: number) => {
     if (!viewportRef.current) return;
@@ -95,6 +141,15 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
       brightness,
       annotations,
     });
+
+    // Update saved annotations to include newly saved ones
+    savedAnnotationsRef.current = annotations.map((ann: any) => ({
+      annotationUID: ann.annotationUID
+    }));
+
+    // Clear undo history since everything is now saved
+    annotationHistoryRef.current = [];
+    setCanUndo(false);
   };
 
   const handleToolSelect = (toolName: string) => {
@@ -115,6 +170,8 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
         handleContrastChange={handleContrastChange}
         handleBrightnessChange={handleBrightnessChange}
         handleSave={handleSave}
+        handleUndo={handleUndo}
+        canUndo={canUndo}
       />
     </div>
   );

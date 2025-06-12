@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
-import { Types, cache } from "@cornerstonejs/core";
-import { annotation, ToolGroupManager } from "@cornerstonejs/tools";
+import { Types, cache, setUseCPURendering, eventTarget } from "@cornerstonejs/core";
+import { annotation, ToolGroupManager, Enums } from "@cornerstonejs/tools";
 import { initializeCornerstone } from "@/lib/dicom/core/dicomCornerstoneInit";
 import { registerWebImageLoader } from "@/lib/dicom/core/registerWebImageLoader";
 import { createRenderingEngine, setup2dViewport } from "@/lib/dicom/core/dicomRenderingEngine";
@@ -27,9 +27,13 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<Types.IStackViewport | null>(null);
   const renderingEngineRef = useRef<Types.IRenderingEngine | null>(null);
+  const annotationHistoryRef = useRef<any[]>([]);
+  const savedAnnotationsRef = useRef<any[]>([]);
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
+  const [canUndo, setCanUndo] = useState(false);
 
   useEffect(() => {
     initializeCornerstone();
@@ -68,6 +72,10 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
 
       if (data.viewer.configs.annotations) {
         restoreViewportAnnotations(data.viewer.configs.annotations, viewportId, viewport);
+        // Store saved annotation UIDs to exclude them from undo history
+        savedAnnotationsRef.current = data.viewer.configs.annotations.map((ann: any) => ({
+          annotationUID: ann.annotationUID
+        }));
       }
     };
 
@@ -77,8 +85,49 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
 
   useViewportResize(renderingEngineRef, viewportId, isInitialized);
 
+  // Set up annotation event listeners for undo functionality
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const handleAnnotationAdded = (event: any) => {
+      const annotationData = event.detail.annotation;
+      const eventViewportId = event.detail.viewportId;
+
+      if (annotationData && eventViewportId === viewportId) {
+        const isSavedAnnotation = savedAnnotationsRef.current.some(saved =>
+          saved.annotationUID === annotationData.annotationUID
+        );
+
+        if (!isSavedAnnotation) {
+          annotationHistoryRef.current.push(annotationData.annotationUID);
+          setCanUndo(true);
+        }
+      }
+    };
+
+    // Add event listener for annotation added events
+    eventTarget.addEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
+
+    return () => {
+      eventTarget.removeEventListener(Enums.Events.ANNOTATION_ADDED, handleAnnotationAdded);
+    };
+  }, [isInitialized, viewportId]);
+
   const handleToolSelect = (toolName: string) => {
     setPrimaryTool(toolName, viewportId);
+  };
+
+  const handleUndo = () => {
+    if (annotationHistoryRef.current.length === 0 || !viewportRef.current) return;
+
+    // Get the last annotation UID from history
+    const lastAnnotationUID = annotationHistoryRef.current.pop();
+
+    if (lastAnnotationUID) {
+      annotation.state.removeAnnotation(lastAnnotationUID);
+      viewportRef.current.render();
+      setCanUndo(annotationHistoryRef.current.length > 0);
+    }
   };
 
   const handleContrastChange = (value: number) => {
@@ -99,6 +148,15 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
       brightness,
       annotations,
     });
+
+    // Update saved annotations to include newly saved ones
+    savedAnnotationsRef.current = annotations.map((ann: any) => ({
+      annotationUID: ann.annotationUID
+    }));
+
+    // Clear undo history since everything is now saved
+    annotationHistoryRef.current = [];
+    setCanUndo(false);
   };
 
   return (
@@ -115,6 +173,8 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
         handleContrastChange={handleContrastChange}
         handleBrightnessChange={handleBrightnessChange}
         handleSave={handleSave}
+        handleUndo={handleUndo}
+        canUndo={canUndo}
       />
     </div>
   );
