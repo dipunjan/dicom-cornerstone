@@ -44,6 +44,8 @@ export interface MedicalImageViewerProps {
 export interface DicomStackConfig {
   contrast: number;
   brightness: number;
+  isInverted: boolean;
+  isGrayscale: boolean;
   annotations?: AnnotationData[];
 }
 
@@ -55,6 +57,12 @@ export interface DicomVolumeConfig {
 export interface MedicalImageConfig {
   brightness: number;
   contrast: number;
+  isInverted: boolean;
+  isGrayscale: boolean;
+  sharpness: number;
+  gammaR: number;
+  gammaG: number;
+  gammaB: number;
   annotations?: AnnotationData[];
 }
 

@@ -26,12 +26,16 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     needsWebImageLoader: true
   });
 
-  // Direct state management
+  // Direct state management - Initialize from backend data only (no frontend defaults)
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [isInverted, setIsInverted] = useState(false);
-  const [isGrayscale, setIsGrayscale] = useState(false);
+  const [isInverted, setIsInverted] = useState(data.viewer.configs.isInverted);
+  const [isGrayscale, setIsGrayscale] = useState(data.viewer.configs.isGrayscale);
+  const [sharpness, setSharpness] = useState(data.viewer.configs.sharpness);
+  const [gammaR, setGammaR] = useState(data.viewer.configs.gammaR);
+  const [gammaG, setGammaG] = useState(data.viewer.configs.gammaG);
+  const [gammaB, setGammaB] = useState(data.viewer.configs.gammaB);
 
   // Viewport controls hook
   const {
@@ -44,6 +48,8 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     rotateViewportCounterClockwise,
     toggleViewportInvert,
     toggleViewportGrayscale,
+    applyViewportSharpness,
+    applyViewportRGBGamma,
   } = useViewportControls();
 
   // Reset active tool when component mounts (switching between viewers)
@@ -84,12 +90,63 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
 
       // Apply initial contrast and brightness
       applyWindowLevel(viewport as Types.IStackViewport, data.viewer.configs.contrast, data.viewer.configs.brightness);
+
+      // Apply initial image enhancement settings using individual functions
+      const applyInitialFilters = () => {
+        if (viewportRef.current) {
+          applyViewportSharpness(viewportRef.current, sharpness);
+          applyViewportRGBGamma(viewportRef.current, gammaR, gammaG, gammaB);
+          if (isGrayscale) {
+            toggleViewportGrayscale(viewportRef.current, isGrayscale);
+          }
+          if (isInverted) {
+            toggleViewportInvert(viewportRef.current, isInverted);
+          }
+        }
+      };
+
+      // Apply filters with multiple attempts to ensure they stick
+      setTimeout(applyInitialFilters, 50);
+      setTimeout(applyInitialFilters, 200);
+      setTimeout(applyInitialFilters, 500);
     };
 
     initializeViewer();
   }, [isInitialized, data, renderingEngineId, viewportId, toolGroupId]);
 
+  // Reapply image enhancement filters when viewport is ready
+  useEffect(() => {
+    if (viewportRef.current) {
+      const viewport = viewportRef.current;
 
+      // Function to apply all filters using individual functions
+      const applyAllFilters = () => {
+        try {
+          applyViewportSharpness(viewport, sharpness);
+          applyViewportRGBGamma(viewport, gammaR, gammaG, gammaB);
+          if (isGrayscale) {
+            toggleViewportGrayscale(viewport, isGrayscale);
+          }
+          if (isInverted) {
+            toggleViewportInvert(viewport, isInverted);
+          }
+        } catch (error) {
+          console.warn('Failed to apply image enhancement filters:', error);
+        }
+      };
+
+      // Try immediately, then with delays if needed
+      applyAllFilters();
+
+      const timeoutId1 = setTimeout(applyAllFilters, 100);
+      const timeoutId2 = setTimeout(applyAllFilters, 300);
+
+      return () => {
+        clearTimeout(timeoutId1);
+        clearTimeout(timeoutId2);
+      };
+    }
+  }, [viewportRef.current, sharpness, gammaR, gammaG, gammaB, isGrayscale, isInverted]);
 
   const handleUndoClick = () => {
     undo(viewportRef.current);
@@ -114,6 +171,12 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     await saveImageConfig(data.id, {
       contrast,
       brightness,
+      isInverted,
+      isGrayscale,
+      sharpness,
+      gammaR,
+      gammaG,
+      gammaB,
       annotations,
     });
 
@@ -160,6 +223,34 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     }
   };
 
+  const handleSharpnessChange = (value: number) => {
+    if (viewportRef.current) {
+      setSharpness(value);
+      applyViewportSharpness(viewportRef.current, value);
+    }
+  };
+
+  const handleGammaRChange = (value: number) => {
+    if (viewportRef.current) {
+      setGammaR(value);
+      applyViewportRGBGamma(viewportRef.current, value, gammaG, gammaB);
+    }
+  };
+
+  const handleGammaGChange = (value: number) => {
+    if (viewportRef.current) {
+      setGammaG(value);
+      applyViewportRGBGamma(viewportRef.current, gammaR, value, gammaB);
+    }
+  };
+
+  const handleGammaBChange = (value: number) => {
+    if (viewportRef.current) {
+      setGammaB(value);
+      applyViewportRGBGamma(viewportRef.current, gammaR, gammaG, value);
+    }
+  };
+
   const handleToolSelect = (toolName: string) => {
     handleToolSelection(toolName, viewportId, setActiveTool);
   };
@@ -191,6 +282,15 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
         handleGrayscaleToggle={handleGrayscaleToggle}
         showGrayscaleToggle={true}
         grayscaleDisabled={false}
+        sharpness={sharpness}
+        handleSharpnessChange={handleSharpnessChange}
+        gammaR={gammaR}
+        gammaG={gammaG}
+        gammaB={gammaB}
+        handleGammaRChange={handleGammaRChange}
+        handleGammaGChange={handleGammaGChange}
+        handleGammaBChange={handleGammaBChange}
+        showImageEnhancement={true}
       />
     </div>
   );

@@ -26,11 +26,12 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     needsWebImageLoader: false
   });
 
-  // Direct state management
+  // Direct state management - Initialize from backend data only (no frontend defaults)
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [isInverted, setIsInverted] = useState(false);
+  const [isInverted, setIsInverted] = useState(data.viewer.configs.isInverted);
+  const [isGrayscale, setIsGrayscale] = useState(data.viewer.configs.isGrayscale);
 
   // Viewport controls hook
   const {
@@ -42,6 +43,7 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     rotateViewportClockwise,
     rotateViewportCounterClockwise,
     toggleViewportInvert,
+    toggleViewportGrayscale,
   } = useViewportControls();
 
   // Reset active tool when component mounts (switching between viewers)
@@ -83,6 +85,14 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
 
       // Apply initial contrast and brightness
       applyWindowLevel(viewport as Types.IStackViewport, data.viewer.configs.contrast, data.viewer.configs.brightness);
+
+      // Apply initial invert and grayscale states
+      if (isInverted) {
+        toggleViewportInvert(viewport, isInverted);
+      }
+      if (isGrayscale) {
+        toggleViewportGrayscale(viewport, isGrayscale);
+      }
     };
 
     initializeViewer();
@@ -111,6 +121,8 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     await saveStackConfig(data.id, {
       contrast,
       brightness,
+      isInverted,
+      isGrayscale,
       annotations,
     });
 
@@ -149,6 +161,14 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     }
   };
 
+  const handleGrayscaleToggle = () => {
+    if (viewportRef.current) {
+      const newGrayscaleState = !isGrayscale;
+      setIsGrayscale(newGrayscaleState);
+      toggleViewportGrayscale(viewportRef.current, newGrayscaleState);
+    }
+  };
+
   const handleToolSelect = (toolName: string) => {
     handleToolSelection(toolName, viewportId, setActiveTool);
   };
@@ -177,8 +197,8 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
         handleRotateCounterClockwise={rotateCounterClockwise}
         isInverted={isInverted}
         handleInvertToggle={handleInvertToggle}
-        isGrayscale={false}
-        handleGrayscaleToggle={() => {}}
+        isGrayscale={isGrayscale}
+        handleGrayscaleToggle={handleGrayscaleToggle}
         showGrayscaleToggle={true}
         grayscaleDisabled={true}
       />

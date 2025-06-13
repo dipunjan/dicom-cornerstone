@@ -202,21 +202,239 @@ export function useViewportControls(props?: UseViewportControlsProps) {
     viewport.render();
   };
 
+  // Store filter states for persistent application
+  const filterStates = new Map<string, { sharpness: number; gammaR: number; gammaG: number; gammaB: number; grayscale: boolean }>();
+  const filterObservers = new Map<HTMLCanvasElement, MutationObserver>();
+
   /**
-   * Toggle viewport grayscale (for regular images only)
+   * Apply persistent filters that survive Cornerstone resets
+   */
+  const applyPersistentFilters = (canvas: HTMLCanvasElement, viewportId: string): void => {
+    const state = filterStates.get(viewportId);
+    if (!state) return;
+
+    const filters: string[] = [];
+
+    // Grayscale
+    if (state.grayscale) {
+      filters.push('grayscale(100%)');
+    }
+
+    // Sharpness
+    if (state.sharpness !== 100) {
+      if (state.sharpness > 100) {
+        const intensity = 1 + (state.sharpness - 100) / 100;
+        const contrastValue = Math.min(200, 100 * intensity);
+        const saturateValue = Math.min(150, 100 * intensity);
+        filters.push(`contrast(${contrastValue}%)`);
+        filters.push(`saturate(${saturateValue}%)`);
+      } else {
+        const blurAmount = (100 - state.sharpness) / 50;
+        filters.push(`blur(${blurAmount}px)`);
+      }
+    }
+
+    // RGB Gamma - Unified approach for proper color channel control
+    const rDiff = state.gammaR - 1.0;
+    const gDiff = state.gammaG - 1.0;
+    const bDiff = state.gammaB - 1.0;
+
+    // Calculate combined effects for all RGB channels
+    if (Math.abs(rDiff) > 0.01 || Math.abs(gDiff) > 0.01 || Math.abs(bDiff) > 0.01) {
+
+      // Calculate overall brightness from average gamma
+      const avgGamma = (state.gammaR + state.gammaG + state.gammaB) / 3;
+      let brightnessValue = 100;
+      if (Math.abs(avgGamma - 1.0) > 0.01) {
+        if (avgGamma < 1.0) {
+          brightnessValue = 70 + (avgGamma * 30); // 70-100%
+        } else {
+          brightnessValue = 100 + ((avgGamma - 1.0) * 30); // 100-130%
+        }
+        filters.push(`brightness(${brightnessValue.toFixed(1)}%)`);
+      }
+
+      // Calculate RGB-specific effects using correct color wheel positions
+      // Color wheel: Red=0°, Yellow=60°, Green=120°, Cyan=180°, Blue=240°, Magenta=300°
+
+      // Red channel effects - Enhanced for stronger red response
+      if (Math.abs(rDiff) > 0.01) {
+        if (rDiff > 0) {
+          // Increase red: Strong red enhancement
+          const sepiaAmount = Math.min(60, rDiff * 40);
+          filters.push(`sepia(${sepiaAmount}%)`);
+          // Stronger shift toward red-orange
+          filters.push(`hue-rotate(${-rDiff * 20}deg)`);
+          // Boost saturation for more vivid red
+          filters.push(`saturate(${100 + rDiff * 25}%)`);
+          // Slight contrast boost for red definition
+          filters.push(`contrast(${100 + rDiff * 10}%)`);
+        } else {
+          // Decrease red: Strong shift toward cyan (opposite of red)
+          filters.push(`hue-rotate(${Math.abs(rDiff) * 60}deg)`);
+          // Boost saturation to make cyan more visible
+          filters.push(`saturate(${100 + Math.abs(rDiff) * 20}%)`);
+        }
+      }
+
+      // Green channel effects - Fix: Green is at 120° on color wheel
+      if (Math.abs(gDiff) > 0.01) {
+        if (gDiff > 0) {
+          // Increase green: Shift toward green (120°)
+          // From default position, need positive rotation toward green
+          filters.push(`hue-rotate(${gDiff * 50}deg)`); // Positive for green
+          filters.push(`saturate(${100 + gDiff * 20}%)`);
+        } else {
+          // Decrease green: Shift toward magenta (300° = -60°)
+          filters.push(`hue-rotate(${Math.abs(gDiff) * -40}deg)`); // Negative for magenta
+        }
+      }
+
+      // Blue channel effects - Fix: Blue is at 240° on color wheel
+      if (Math.abs(bDiff) > 0.01) {
+        if (bDiff > 0) {
+          // Increase blue: Shift toward blue (240° = -120° from 0°)
+          // Need negative rotation to reach blue from red
+          filters.push(`hue-rotate(${bDiff * -80}deg)`); // Negative for blue
+          filters.push(`brightness(${Math.max(85, 100 - bDiff * 10)}%)`);
+        } else {
+          // Decrease blue: Shift toward yellow (60°)
+          filters.push(`hue-rotate(${Math.abs(bDiff) * 30}deg)`); // Positive for yellow
+          filters.push(`brightness(${Math.min(115, 100 + Math.abs(bDiff) * 10)}%)`);
+        }
+      }
+
+      // Add overall saturation boost if multiple channels are changed
+      const totalColorChange = Math.abs(rDiff) + Math.abs(gDiff) + Math.abs(bDiff);
+      if (totalColorChange > 0.1) {
+        const saturationBoost = 100 + (totalColorChange * 15);
+        filters.push(`saturate(${Math.min(150, saturationBoost).toFixed(1)}%)`);
+      }
+    }
+
+    // Apply the filter
+    const finalFilter = filters.length > 0 ? filters.join(' ') : 'none';
+
+    // Force the filter application
+    canvas.style.setProperty('filter', finalFilter, 'important');
+  };
+
+  /**
+   * Setup persistent filter monitoring for a canvas
+   */
+  const setupFilterMonitoring = (canvas: HTMLCanvasElement, viewportId: string): void => {
+    // Remove existing observer if any
+    const existingObserver = filterObservers.get(canvas);
+    if (existingObserver) {
+      existingObserver.disconnect();
+    }
+
+    // Create new observer to watch for style changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const currentFilter = canvas.style.filter;
+          if (currentFilter === 'none' || currentFilter === '') {
+            applyPersistentFilters(canvas, viewportId);
+          }
+        }
+      });
+    });
+
+    observer.observe(canvas, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    filterObservers.set(canvas, observer);
+  };
+
+  /**
+   * Apply sharpness filter to viewport (persistent version)
+   */
+  const applyViewportSharpness = (viewport: Types.IStackViewport | Types.IVolumeViewport, sharpness: number): void => {
+    if (!viewport) return;
+
+    const canvas = viewport.getCanvas();
+    if (!canvas) {
+      setTimeout(() => applyViewportSharpness(viewport, sharpness), 100);
+      return;
+    }
+
+    const viewportId = viewport.id || 'default';
+
+    // Update filter state
+    const currentState = filterStates.get(viewportId) || { sharpness: 100, gammaR: 1.0, gammaG: 1.0, gammaB: 1.0, grayscale: false };
+    currentState.sharpness = Math.max(0, Math.min(200, sharpness));
+    filterStates.set(viewportId, currentState);
+
+    // Setup monitoring if not already done
+    if (!filterObservers.has(canvas)) {
+      setupFilterMonitoring(canvas, viewportId);
+    }
+
+    // Apply filters
+    applyPersistentFilters(canvas, viewportId);
+  };
+
+  /**
+   * Apply RGB gamma correction (persistent version)
+   */
+  const applyViewportRGBGamma = (
+    viewport: Types.IStackViewport | Types.IVolumeViewport,
+    gammaR: number,
+    gammaG: number,
+    gammaB: number
+  ): void => {
+    if (!viewport) return;
+
+    const canvas = viewport.getCanvas();
+    if (!canvas) {
+      setTimeout(() => applyViewportRGBGamma(viewport, gammaR, gammaG, gammaB), 100);
+      return;
+    }
+
+    const viewportId = viewport.id || 'default';
+
+    // Update filter state
+    const currentState = filterStates.get(viewportId) || { sharpness: 100, gammaR: 1.0, gammaG: 1.0, gammaB: 1.0, grayscale: false };
+    currentState.gammaR = Math.max(0.2, Math.min(2.5, gammaR));
+    currentState.gammaG = Math.max(0.2, Math.min(2.5, gammaG));
+    currentState.gammaB = Math.max(0.2, Math.min(2.5, gammaB));
+    filterStates.set(viewportId, currentState);
+
+    // Setup monitoring if not already done
+    if (!filterObservers.has(canvas)) {
+      setupFilterMonitoring(canvas, viewportId);
+    }
+
+    // Apply filters
+    applyPersistentFilters(canvas, viewportId);
+  };
+
+  /**
+   * Toggle viewport grayscale (persistent version)
    */
   const toggleViewportGrayscale = (viewport: Types.IStackViewport | Types.IVolumeViewport, isGrayscale: boolean): void => {
     if (!viewport) return;
 
-    // Get the canvas element from the viewport
     const canvas = viewport.getCanvas();
-    if (canvas) {
-      if (isGrayscale) {
-        canvas.style.filter = 'grayscale(100%)';
-      } else {
-        canvas.style.filter = 'none';
-      }
+    if (!canvas) return;
+
+    const viewportId = viewport.id || 'default';
+
+    // Update filter state
+    const currentState = filterStates.get(viewportId) || { sharpness: 100, gammaR: 1.0, gammaG: 1.0, gammaB: 1.0, grayscale: false };
+    currentState.grayscale = isGrayscale;
+    filterStates.set(viewportId, currentState);
+
+    // Setup monitoring if not already done
+    if (!filterObservers.has(canvas)) {
+      setupFilterMonitoring(canvas, viewportId);
     }
+
+    // Apply filters
+    applyPersistentFilters(canvas, viewportId);
   };
 
   /**
@@ -324,6 +542,8 @@ export function useViewportControls(props?: UseViewportControlsProps) {
     rotateViewportCounterClockwise,
     toggleViewportInvert,
     toggleViewportGrayscale,
+    applyViewportSharpness,
+    applyViewportRGBGamma,
     adjustVolumeShift,
 
     // Volume-specific functions (only available when props are provided)

@@ -9,7 +9,10 @@ import {
   FaAdjust,
   FaSun,
   FaCircleNotch,
-  FaPalette
+  FaPalette,
+  FaEye,
+
+  FaSquare
 } from "react-icons/fa";
 
 interface ViewerControlsProps {
@@ -32,6 +35,15 @@ interface ViewerControlsProps {
   handleGrayscaleToggle?: () => void;
   showGrayscaleToggle?: boolean;
   grayscaleDisabled?: boolean;
+  sharpness?: number;
+  handleSharpnessChange?: (value: number) => void;
+  gammaR?: number;
+  gammaG?: number;
+  gammaB?: number;
+  handleGammaRChange?: (value: number) => void;
+  handleGammaGChange?: (value: number) => void;
+  handleGammaBChange?: (value: number) => void;
+  showImageEnhancement?: boolean;
 }
 
 export default function ViewerControls({
@@ -54,6 +66,15 @@ export default function ViewerControls({
   handleGrayscaleToggle = () => {},
   showGrayscaleToggle = false,
   grayscaleDisabled = false,
+  sharpness,
+  handleSharpnessChange = () => {},
+  gammaR,
+  gammaG,
+  gammaB,
+  handleGammaRChange = () => {},
+  handleGammaGChange = () => {},
+  handleGammaBChange = () => {},
+  showImageEnhancement = false,
 }: ViewerControlsProps) {
   return (
     <div className="controls">
@@ -163,6 +184,69 @@ export default function ViewerControls({
           />
         </div>
       </div>
+
+      {/* Image Enhancement Controls - Only for ImageViewer */}
+      {showImageEnhancement && (
+        <>
+          {/* Separator */}
+          <div className="toolbar-separator"></div>
+
+          <div className="control-group">
+            <div className="slider-control">
+              <FaEye className="slider-icon" title="Sharpness" />
+              <input
+                type="range"
+                min={0}
+                max={200}
+                step={5}
+                value={sharpness!}
+                onChange={(e) => handleSharpnessChange(parseFloat(e.target.value))}
+                className="compact-slider"
+                title={`Sharpness: ${sharpness!}% (100% = normal)`}
+              />
+            </div>
+            <div className="slider-control">
+              <FaSquare className="slider-icon" title="Red Gamma" style={{ color: '#ff4444' }} />
+              <input
+                type="range"
+                min={0.2}
+                max={2.5}
+                step={0.1}
+                value={gammaR!}
+                onChange={(e) => handleGammaRChange(parseFloat(e.target.value))}
+                className="compact-slider"
+                title={`Red Gamma: ${gammaR!.toFixed(1)} (1.0 = normal)`}
+              />
+            </div>
+            <div className="slider-control">
+              <FaSquare className="slider-icon" title="Green Gamma" style={{ color: '#44ff44' }} />
+              <input
+                type="range"
+                min={0.2}
+                max={2.5}
+                step={0.1}
+                value={gammaG!}
+                onChange={(e) => handleGammaGChange(parseFloat(e.target.value))}
+                className="compact-slider"
+                title={`Green Gamma: ${gammaG!.toFixed(1)} (1.0 = normal)`}
+              />
+            </div>
+            <div className="slider-control">
+              <FaSquare className="slider-icon" title="Blue Gamma" style={{ color: '#4444ff' }} />
+              <input
+                type="range"
+                min={0.2}
+                max={2.5}
+                step={0.1}
+                value={gammaB!}
+                onChange={(e) => handleGammaBChange(parseFloat(e.target.value))}
+                className="compact-slider"
+                title={`Blue Gamma: ${gammaB!.toFixed(1)} (1.0 = normal)`}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Separator */}
       <div className="toolbar-separator"></div>

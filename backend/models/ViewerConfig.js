@@ -22,6 +22,14 @@ const stackConfigSchema = new mongoose.Schema(
           type: Number,
           default: 1,
         },
+        isInverted: {
+          type: Boolean,
+          default: false,
+        },
+        isGrayscale: {
+          type: Boolean,
+          default: false,
+        },
         annotations: {
           type: [
             {
@@ -109,6 +117,30 @@ const imageConfigSchema = new mongoose.Schema(
         brightness: {
           type: Number,
           default: 1,
+        },
+        isInverted: {
+          type: Boolean,
+          default: false,
+        },
+        isGrayscale: {
+          type: Boolean,
+          default: false,
+        },
+        sharpness: {
+          type: Number,
+          default: 100,
+        },
+        gammaR: {
+          type: Number,
+          default: 1.0,
+        },
+        gammaG: {
+          type: Number,
+          default: 1.0,
+        },
+        gammaB: {
+          type: Number,
+          default: 1.0,
         },
         annotations: {
           type: [
