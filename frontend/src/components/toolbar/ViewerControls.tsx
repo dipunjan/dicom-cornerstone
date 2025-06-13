@@ -7,7 +7,9 @@ import {
   FaSave,
   FaUndo,
   FaAdjust,
-  FaSun
+  FaSun,
+  FaCircleNotch,
+  FaPalette
 } from "react-icons/fa";
 
 interface ViewerControlsProps {
@@ -24,6 +26,12 @@ interface ViewerControlsProps {
   handleFlipVertical?: () => void;
   handleRotateClockwise?: () => void;
   handleRotateCounterClockwise?: () => void;
+  isInverted?: boolean;
+  handleInvertToggle?: () => void;
+  isGrayscale?: boolean;
+  handleGrayscaleToggle?: () => void;
+  showGrayscaleToggle?: boolean;
+  grayscaleDisabled?: boolean;
 }
 
 export default function ViewerControls({
@@ -40,6 +48,12 @@ export default function ViewerControls({
   handleFlipVertical = () => {},
   handleRotateClockwise = () => {},
   handleRotateCounterClockwise = () => {},
+  isInverted = false,
+  handleInvertToggle = () => {},
+  isGrayscale = false,
+  handleGrayscaleToggle = () => {},
+  showGrayscaleToggle = false,
+  grayscaleDisabled = false,
 }: ViewerControlsProps) {
   return (
     <div className="controls">
@@ -97,6 +111,23 @@ export default function ViewerControls({
           >
             <FaRedoAlt />
           </button>
+          <button
+            onClick={handleInvertToggle}
+            className={`tool-button ${isInverted ? 'tool-button-active' : ''}`}
+            title={isInverted ? "Disable Invert" : "Enable Invert"}
+          >
+            <FaCircleNotch />
+          </button>
+          {showGrayscaleToggle && (
+            <button
+              onClick={grayscaleDisabled ? undefined : handleGrayscaleToggle}
+              className={`tool-button ${isGrayscale ? 'tool-button-active' : ''} ${grayscaleDisabled ? 'tool-button-disabled' : ''}`}
+              title={grayscaleDisabled ? "Grayscale not available for DICOM images" : (isGrayscale ? "Disable Grayscale" : "Enable Grayscale")}
+              disabled={grayscaleDisabled}
+            >
+              <FaPalette />
+            </button>
+          )}
         </div>
       </div>
 

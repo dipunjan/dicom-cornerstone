@@ -30,6 +30,8 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [isInverted, setIsInverted] = useState(false);
+  const [isGrayscale, setIsGrayscale] = useState(false);
 
   // Viewport controls hook
   const {
@@ -40,6 +42,8 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     flipViewportHorizontal,
     rotateViewportClockwise,
     rotateViewportCounterClockwise,
+    toggleViewportInvert,
+    toggleViewportGrayscale,
   } = useViewportControls();
 
   // Reset active tool when component mounts (switching between viewers)
@@ -140,6 +144,22 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     }
   };
 
+  const handleInvertToggle = () => {
+    if (viewportRef.current) {
+      const newInvertState = !isInverted;
+      setIsInverted(newInvertState);
+      toggleViewportInvert(viewportRef.current, newInvertState);
+    }
+  };
+
+  const handleGrayscaleToggle = () => {
+    if (viewportRef.current) {
+      const newGrayscaleState = !isGrayscale;
+      setIsGrayscale(newGrayscaleState);
+      toggleViewportGrayscale(viewportRef.current, newGrayscaleState);
+    }
+  };
+
   const handleToolSelect = (toolName: string) => {
     handleToolSelection(toolName, viewportId, setActiveTool);
   };
@@ -165,6 +185,12 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
         handleFlipVertical={flipVertical}
         handleRotateClockwise={rotateClockwise}
         handleRotateCounterClockwise={rotateCounterClockwise}
+        isInverted={isInverted}
+        handleInvertToggle={handleInvertToggle}
+        isGrayscale={isGrayscale}
+        handleGrayscaleToggle={handleGrayscaleToggle}
+        showGrayscaleToggle={true}
+        grayscaleDisabled={false}
       />
     </div>
   );

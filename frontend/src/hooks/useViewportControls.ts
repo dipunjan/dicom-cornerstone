@@ -193,6 +193,33 @@ export function useViewportControls(props?: UseViewportControlsProps) {
   };
 
   /**
+   * Toggle viewport invert (grayscale inversion)
+   */
+  const toggleViewportInvert = (viewport: Types.IStackViewport | Types.IVolumeViewport, isInverted: boolean): void => {
+    if (!viewport || !('setProperties' in viewport)) return;
+
+    viewport.setProperties({ invert: isInverted });
+    viewport.render();
+  };
+
+  /**
+   * Toggle viewport grayscale (for regular images only)
+   */
+  const toggleViewportGrayscale = (viewport: Types.IStackViewport | Types.IVolumeViewport, isGrayscale: boolean): void => {
+    if (!viewport) return;
+
+    // Get the canvas element from the viewport
+    const canvas = viewport.getCanvas();
+    if (canvas) {
+      if (isGrayscale) {
+        canvas.style.filter = 'grayscale(100%)';
+      } else {
+        canvas.style.filter = 'none';
+      }
+    }
+  };
+
+  /**
    * Adjust volume shift for 3D viewport
    */
   const adjustVolumeShift = (viewport: Types.IVolumeViewport, shiftValue: number): void => {
@@ -295,6 +322,8 @@ export function useViewportControls(props?: UseViewportControlsProps) {
     flipViewportHorizontal,
     rotateViewportClockwise,
     rotateViewportCounterClockwise,
+    toggleViewportInvert,
+    toggleViewportGrayscale,
     adjustVolumeShift,
 
     // Volume-specific functions (only available when props are provided)

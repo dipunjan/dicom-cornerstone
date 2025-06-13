@@ -30,6 +30,7 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
   const [contrast, setContrast] = useState(data.viewer.configs.contrast);
   const [brightness, setBrightness] = useState(data.viewer.configs.brightness);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [isInverted, setIsInverted] = useState(false);
 
   // Viewport controls hook
   const {
@@ -40,6 +41,7 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     flipViewportHorizontal,
     rotateViewportClockwise,
     rotateViewportCounterClockwise,
+    toggleViewportInvert,
   } = useViewportControls();
 
   // Reset active tool when component mounts (switching between viewers)
@@ -139,6 +141,14 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     }
   };
 
+  const handleInvertToggle = () => {
+    if (viewportRef.current) {
+      const newInvertState = !isInverted;
+      setIsInverted(newInvertState);
+      toggleViewportInvert(viewportRef.current, newInvertState);
+    }
+  };
+
   const handleToolSelect = (toolName: string) => {
     handleToolSelection(toolName, viewportId, setActiveTool);
   };
@@ -165,6 +175,12 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
         handleFlipVertical={flipVertical}
         handleRotateClockwise={rotateClockwise}
         handleRotateCounterClockwise={rotateCounterClockwise}
+        isInverted={isInverted}
+        handleInvertToggle={handleInvertToggle}
+        isGrayscale={false}
+        handleGrayscaleToggle={() => {}}
+        showGrayscaleToggle={true}
+        grayscaleDisabled={true}
       />
     </div>
   );
