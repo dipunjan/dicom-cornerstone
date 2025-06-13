@@ -1,10 +1,10 @@
 import { Types, cache } from "@cornerstonejs/core";
 import {
   createRenderingEngine,
-  setup2dViewport,
-  setup3dViewport,
-  loadDicomStack,
-  loadDicomVolume
+  createStackViewport,
+  createVolumeViewport,
+  loadStackData,
+  loadVolumeData
 } from "@/lib/dicom/core/dicomRenderingEngine";
 import {
   setupViewer,
@@ -12,26 +12,45 @@ import {
   volumeViewerConfig,
   volume2dModeConfig
 } from "@/lib/dicom/config/dicomAnnotationControl";
-
 import { restoreViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
 
+/**
+ * Result interface for viewer setup operations
+ */
 export interface ViewerSetupResult {
   renderingEngine: Types.IRenderingEngine;
   viewport: Types.IStackViewport | Types.IVolumeViewport;
 }
 
-export async function setupImageViewer(
-  element: HTMLDivElement,
-  renderingEngineId: string,
-  viewportId: string,
-  toolGroupId: string,
-  imageUrl: string,
-  annotations?: any[]
-): Promise<ViewerSetupResult> {
-  cache.purgeCache();
+/**
+ * Common setup parameters for all viewers
+ */
+interface BaseViewerParams {
+  element: HTMLDivElement;
+  renderingEngineId: string;
+  viewportId: string;
+  toolGroupId: string;
+  annotations?: any[];
+}
 
-  const renderingEngine = createRenderingEngine(renderingEngineId);
-  const viewport = setup2dViewport(renderingEngine, element, viewportId);
+/**
+ * Clears cache and sets up common viewer infrastructure
+ */
+function initializeViewer(renderingEngineId: string): Types.IRenderingEngine {
+  cache.purgeCache();
+  return createRenderingEngine(renderingEngineId);
+}
+
+/**
+ * Sets up a single image viewer (web images)
+ */
+export async function setupSingleImageViewer(
+  params: BaseViewerParams & { imageUrl: string }
+): Promise<ViewerSetupResult> {
+  const { element, renderingEngineId, viewportId, toolGroupId, imageUrl, annotations } = params;
+
+  const renderingEngine = initializeViewer(renderingEngineId);
+  const viewport = createStackViewport(renderingEngine, element, viewportId);
 
   setupViewer(toolGroupId, viewportId, renderingEngineId, stackViewerConfig);
 
@@ -45,22 +64,20 @@ export async function setupImageViewer(
   return { renderingEngine, viewport };
 }
 
-export async function setupStackViewer(
-  element: HTMLDivElement,
-  renderingEngineId: string,
-  viewportId: string,
-  toolGroupId: string,
-  imageUrl: string | string[],
-  annotations?: any[]
+/**
+ * Sets up a DICOM stack viewer (multiple DICOM images)
+ */
+export async function setupDicomStackViewer(
+  params: BaseViewerParams & { imageUrls: string | string[] }
 ): Promise<ViewerSetupResult> {
-  cache.purgeCache();
+  const { element, renderingEngineId, viewportId, toolGroupId, imageUrls, annotations } = params;
 
-  const renderingEngine = createRenderingEngine(renderingEngineId);
-  const viewport = setup2dViewport(renderingEngine, element, viewportId);
+  const renderingEngine = initializeViewer(renderingEngineId);
+  const viewport = createStackViewport(renderingEngine, element, viewportId);
 
   setupViewer(toolGroupId, viewportId, renderingEngineId, stackViewerConfig);
 
-  await loadDicomStack(viewport, imageUrl);
+  await loadStackData(viewport, imageUrls);
 
   if (annotations) {
     restoreViewportAnnotations(annotations, viewportId, viewport);
@@ -69,36 +86,41 @@ export async function setupStackViewer(
   return { renderingEngine, viewport };
 }
 
-export async function setupVolumeViewer3D(
-  element: HTMLDivElement,
-  renderingEngineId: string,
-  viewportId: string,
-  toolGroupId: string,
-  imageUrls: string[],
-  volumeId: string
+/**
+ * Sets up a 3D volume viewer
+ */
+export async function setup3DVolumeViewer(
+  params: BaseViewerParams & { imageUrls: string[]; volumeId: string }
 ): Promise<ViewerSetupResult> {
-  cache.purgeCache();
+  const { element, renderingEngineId, viewportId, toolGroupId, imageUrls, volumeId } = params;
 
-  const renderingEngine = createRenderingEngine(renderingEngineId);
-  const viewport = setup3dViewport(renderingEngine, element, viewportId);
+  const renderingEngine = initializeViewer(renderingEngineId);
+  const viewport = createVolumeViewport(renderingEngine, element, viewportId);
 
   setupViewer(toolGroupId, viewportId, renderingEngineId, volumeViewerConfig);
 
-  await loadDicomVolume(viewport, imageUrls, "CT-Bone", volumeId);
+  await loadVolumeData(viewport, imageUrls, volumeId, "CT-Bone");
+
   return { renderingEngine, viewport };
 }
 
-export async function setupVolumeViewer2D(
-  element: HTMLDivElement,
-  renderingEngineId: string,
-  viewportId: string,
-  toolGroupId: string,
-  imageUrls: string[],
+/**
+ * Sets up a 2D volume viewer (volume data in 2D mode)
+ */
+export async function setup2DVolumeViewer(
+  params: BaseViewerParams & { imageUrls: string[] }
 ): Promise<ViewerSetupResult> {
-  const renderingEngine = createRenderingEngine(renderingEngineId);
-  const viewport = setup2dViewport(renderingEngine, element, viewportId);
+  const { element, renderingEngineId, viewportId, toolGroupId, imageUrls, annotations } = params;
+
+  const renderingEngine = initializeViewer(renderingEngineId);
+  const viewport = createStackViewport(renderingEngine, element, viewportId);
+
   setupViewer(toolGroupId, viewportId, renderingEngineId, volume2dModeConfig);
-  await loadDicomStack(viewport, imageUrls);
+  await loadStackData(viewport, imageUrls);
+
+  if (annotations) {
+    restoreViewportAnnotations(annotations, viewportId, viewport);
+  }
 
   return { renderingEngine, viewport };
 }

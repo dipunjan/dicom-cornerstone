@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Types } from "@cornerstonejs/core";
 import { ToolGroupManager } from "@cornerstonejs/tools";
 import { vec3, mat4 } from "gl-matrix";
-import { setupVolumeViewer3D, setupVolumeViewer2D, ViewerSetupResult } from "@/lib/dicom/utils/viewerUtils";
+import { setup3DVolumeViewer, setup2DVolumeViewer, ViewerSetupResult } from "@/lib/dicom/utils/viewerUtils";
 
 export const stackOriginalPoints = new Map<string, { center: number; width: number }>();
 const volumeOriginalPoints = new Map<string, number[][]>();
@@ -249,14 +249,14 @@ export function useViewportControls(props?: UseViewportControlsProps) {
 
     ToolGroupManager.destroyToolGroup(props.toolGroupId!);
 
-    const result = await setupVolumeViewer3D(
+    const result = await setup3DVolumeViewer({
       element,
-      props.renderingEngineId!,
-      props.viewportId!,
-      props.toolGroupId!,
+      renderingEngineId: props.renderingEngineId!,
+      viewportId: props.viewportId!,
+      toolGroupId: props.toolGroupId!,
       imageUrls,
-      `dicomVolume_${props.dataId}`
-    );
+      volumeId: `dicomVolume_${props.dataId}`
+    });
 
     setIs3D(true);
     return result;
@@ -274,13 +274,13 @@ export function useViewportControls(props?: UseViewportControlsProps) {
 
     ToolGroupManager.destroyToolGroup(props.toolGroupId!);
 
-    const result = await setupVolumeViewer2D(
+    const result = await setup2DVolumeViewer({
       element,
-      props.renderingEngineId!,
-      props.viewportId!,
-      props.toolGroupId!,
+      renderingEngineId: props.renderingEngineId!,
+      viewportId: props.viewportId!,
+      toolGroupId: props.toolGroupId!,
       imageUrls
-    );
+    });
 
     setIs3D(false);
     return result;

@@ -7,7 +7,7 @@ import { useViewerInitialization } from "@/hooks/useViewerInitialization";
 import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
-import { setupStackViewer } from "@/lib/dicom/utils/viewerUtils";
+import { setupDicomStackViewer } from "@/lib/dicom/utils/viewerUtils";
 import { useViewportControls } from "@/hooks/useViewportControls";
 import { handleToolSelection } from "@/lib/dicom/config/dicomAnnotationControl";
 import ViewerControls from "../toolbar/ViewerControls";
@@ -66,14 +66,14 @@ export default function StackViewer({ data }: DicomStackViewerProps) {
     const initializeViewer = async () => {
       const element = elementRef.current;
       if (!element) return;
-      const { renderingEngine, viewport } = await setupStackViewer(
+      const { renderingEngine, viewport } = await setupDicomStackViewer({
         element,
         renderingEngineId,
         viewportId,
         toolGroupId,
-        data.viewer.imageUrl,
-        data.viewer.configs.annotations
-      );
+        imageUrls: data.viewer.imageUrl,
+        annotations: data.viewer.configs.annotations
+      });
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;

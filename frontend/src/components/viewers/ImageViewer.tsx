@@ -8,7 +8,7 @@ import { useViewerInitialization } from "@/hooks/useViewerInitialization";
 import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
-import { setupImageViewer } from "@/lib/dicom/utils/viewerUtils";
+import { setupSingleImageViewer } from "@/lib/dicom/utils/viewerUtils";
 import { useViewportControls } from "@/hooks/useViewportControls";
 import { handleToolSelection } from "@/lib/dicom/config/dicomAnnotationControl";
 
@@ -66,14 +66,14 @@ export default function ImageViewer({ data }: MedicalImageViewerProps) {
     const initializeViewer = async () => {
       const element = elementRef.current;
       if (!element) return;
-      const { renderingEngine, viewport } = await setupImageViewer(
+      const { renderingEngine, viewport } = await setupSingleImageViewer({
         element,
         renderingEngineId,
         viewportId,
         toolGroupId,
-        data.viewer.imageUrl,
-        data.viewer.configs.annotations
-      );
+        imageUrl: data.viewer.imageUrl,
+        annotations: data.viewer.configs.annotations
+      });
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;

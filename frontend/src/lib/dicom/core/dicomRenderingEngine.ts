@@ -4,12 +4,17 @@ import {
   Enums,
   volumeLoader,
 } from "@cornerstonejs/core";
-import { ViewportType } from "@cornerstonejs/core/enums";
 
-export function createRenderingEngine(id: string) {
-  return new RenderingEngine(id);
+/**
+ * Creates a new Cornerstone.js rendering engine instance
+ */
+export function createRenderingEngine(engineId: string): RenderingEngine {
+  return new RenderingEngine(engineId);
 }
 
+/**
+ * Configuration interface for viewport setup
+ */
 export interface ViewportConfig {
   viewportId: string;
   type: Enums.ViewportType;
@@ -18,7 +23,10 @@ export interface ViewportConfig {
   orientation?: Enums.OrientationAxis;
 }
 
-export function setupViewport(
+/**
+ * Creates and enables a viewport with the given configuration
+ */
+export function createViewport(
   renderingEngine: RenderingEngine,
   config: ViewportConfig
 ): Types.IViewport {
@@ -36,21 +44,27 @@ export function setupViewport(
   return renderingEngine.getViewport(config.viewportId);
 }
 
-export function setup2dViewport(
+/**
+ * Creates a 2D stack viewport for single images or image stacks
+ */
+export function createStackViewport(
   renderingEngine: RenderingEngine,
   element: HTMLDivElement,
   viewportId: string
 ): Types.IStackViewport {
   const config: ViewportConfig = {
     viewportId,
-    type: ViewportType.STACK,
+    type: Enums.ViewportType.STACK,
     element,
   };
 
-  return setupViewport(renderingEngine, config) as Types.IStackViewport;
+  return createViewport(renderingEngine, config) as Types.IStackViewport;
 }
 
-export function setup3dViewport(
+/**
+ * Creates a 3D volume viewport for volumetric rendering
+ */
+export function createVolumeViewport(
   renderingEngine: RenderingEngine,
   element: HTMLDivElement,
   viewportId: string,
@@ -63,32 +77,38 @@ export function setup3dViewport(
     orientation,
   };
 
-  return setupViewport(renderingEngine, config) as Types.IVolumeViewport;
+  return createViewport(renderingEngine, config) as Types.IVolumeViewport;
 }
 
-export async function loadDicomStack(
+/**
+ * Loads Stack images into 3D viewport
+ */
+export async function loadStackData(
   viewport: Types.IStackViewport,
   imageIds: string | string[]
-) {
+): Promise<void> {
   const ids = Array.isArray(imageIds) ? imageIds : [imageIds];
   await viewport.setStack(ids);
   viewport.render();
 }
 
-export async function loadDicomVolume(
+/**
+ * Loads Volume images into 3D viewport
+ */
+export async function loadVolumeData(
   viewport: Types.IVolumeViewport,
   imageIds: string[],
-  preset: string = "CT-Bone",
-  volumeId: string
-) {
+  volumeId: string,
+  preset: string = "CT-Bone"
+): Promise<{ volume: any; volumeId: string }> {
   const volume = await volumeLoader.createAndCacheVolume(volumeId, {
     imageIds,
   });
 
   volume.load();
-  await viewport.setVolumes([{ volumeId: volumeId }]);
+  await viewport.setVolumes([{ volumeId }]);
   viewport.setProperties({ preset });
   viewport.render();
 
-  return { volume, volumeId: volumeId };
+  return { volume, volumeId };
 }

@@ -8,13 +8,13 @@ import { useViewerInitialization } from "@/hooks/useViewerInitialization";
 import { useAnnotationUndo } from "@/hooks/useAnnotationUndo";
 import { useViewerCleanup } from "@/hooks/useViewerCleanup";
 import { getViewportAnnotations } from "@/lib/dicom/config/annotationLoader";
-import { setupVolumeViewer3D } from "@/lib/dicom/utils/viewerUtils";
+import { setup3DVolumeViewer } from "@/lib/dicom/utils/viewerUtils";
 import { useViewportControls } from "@/hooks/useViewportControls";
 import {
-  setup3dViewport,
-  setup2dViewport,
-  loadDicomVolume,
-  loadDicomStack,
+  createVolumeViewport,
+  createStackViewport,
+  loadVolumeData,
+  loadStackData,
 } from "@/lib/dicom/core/dicomRenderingEngine";
 import {
   setupViewer,
@@ -86,12 +86,12 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
 
     ToolGroupManager.destroyToolGroup(toolGroupId);
 
-    const viewport = setup3dViewport(renderingEngineRef.current, elementRef.current, viewportId);
+    const viewport = createVolumeViewport(renderingEngineRef.current, elementRef.current, viewportId);
     viewportRef.current = viewport;
 
     setupViewer(toolGroupId, viewportId, renderingEngineId, volumeViewerConfig);
 
-    await loadDicomVolume(viewport, dicomFilesRef.current, undefined, `dicomVolume_${data.id}`);
+    await loadVolumeData(viewport, dicomFilesRef.current, `dicomVolume_${data.id}`);
     if (adjustVolumeShift && shift !== undefined) {
       adjustVolumeShift(viewport, shift);
     }
@@ -105,12 +105,12 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
 
     ToolGroupManager.destroyToolGroup(toolGroupId);
 
-    const viewport = setup2dViewport(renderingEngineRef.current, elementRef.current, viewportId);
+    const viewport = createStackViewport(renderingEngineRef.current, elementRef.current, viewportId);
     viewportRef.current = viewport;
 
     setupViewer(toolGroupId, viewportId, renderingEngineId, volume2dModeConfig);
 
-    await loadDicomStack(viewport, dicomFilesRef.current);
+    await loadStackData(viewport, dicomFilesRef.current);
     if (setIs3D) {
       setIs3D(false);
     }
@@ -125,14 +125,14 @@ export default function VolumeViewer({ data }: DicomVolumeViewerProps) {
       const element = elementRef.current;
       if (!element) return;
 
-      const { renderingEngine, viewport } = await setupVolumeViewer3D(
+      const { renderingEngine, viewport } = await setup3DVolumeViewer({
         element,
         renderingEngineId,
         viewportId,
         toolGroupId,
-        data.viewer.imageUrl,
-        `dicomVolume_${data.id}`
-      );
+        imageUrls: data.viewer.imageUrl,
+        volumeId: `dicomVolume_${data.id}`
+      });
 
       renderingEngineRef.current = renderingEngine;
       viewportRef.current = viewport;
